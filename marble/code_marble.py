@@ -32,13 +32,14 @@ class Marble:
         self.angular_acceleration = 0
     
     def accelerate(self, a, t):
-        f = 1 / sqrt(ROTATION_RADIUS / sqrt(G**2 / a**2))
+        f = 1 / sqrt(ROTATION_RADIUS / sqrt(G**2 + a**2))
 
         max_theta = atan(a / G)
         
         accel = max_theta*sin(f*t)
 
-        max_time = pi/(2*f)
+        max_time = (pi/2)/f
+        print(max_time)
 
         theta = accel if t < max_time else max_theta
 

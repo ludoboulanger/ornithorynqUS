@@ -38,15 +38,16 @@ class Marble:
         return (self.x, self.y, self.z)
     
     def accelerate(self, a, t):
-        f = 1 / sqrt(ROTATION_RADIUS / sqrt(G**2 / a**2))
+        f = 1 / sqrt(ROTATION_RADIUS / sqrt(G**2 + a**2))
 
         max_theta = atan(a / G)
-        
+        print("MAX THETA :: ", max_theta)
         accel = max_theta*sin(f*t)
 
         max_time = pi/(2*f)
+        print("MAX_TIME :: ", max_time)
 
-        theta = accel if t < max_time else max_theta
+        theta = accel # if t < max_time else max_theta
 
         self.angular_position = theta
 
@@ -102,8 +103,8 @@ for f in frames:
     # Update Time
     relative_time += TIME
     
-#    if f == FRAME_RATE:
-#        accel_car = 0
-#        relative_time = 0
+    if f == FRAME_RATE:
+        accel_car = 0
+        relative_time = 0
     
 bpy.ops.screen.animation_play()
