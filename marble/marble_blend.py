@@ -109,87 +109,118 @@ class Marble:
 marble_object = bpy.context.scene.objects["Marble"]
 container_object = bpy.context.scene.objects["Container"]
 
-# Movements
-frames = range(TOTAL_FRAMES)
-
-# Animation
-marble_object.animation_data_clear()
-container_object.animation_data_clear()
-# bpy.context.scene.objects["Marble"].select_set(True)
-current_time = 0
-
-# Instantiate Animation Data
-container = Container(0, 0, 5)
-marble = Marble(0, 0, 15)
-accel_car = 2000
-relative_time = 0
-
-# Both objects sim
-for f in frames:
+def sim_all():
+    # Instantiate Animation Data
+    container = Container(0, 0, 5)
+    marble = Marble(0, 0, 15)
     
-    # Calculate next position
-    container.rectilinear_move(accel_car, TIME, axis="x")
-    marble.oscillate(relative_time, accel=-accel_car, accel_angle=0)
+    # Inital params
+    accel_car = 800
+    relative_time = 0
     
-    # Set current frame
-    context.scene.frame_set(f)
+    # Clear previous animation data
+    marble_object.animation_data_clear()
+    container_object.animation_data_clear()
     
-    # Get marble position
-    marble_object.location = marble.get_cartesien_position()
-    container_object.location = container.get_cartesien_position()
-    # Insert keyframe
-    marble_object.keyframe_insert(data_path="location", frame=f)
-    container_object.keyframe_insert(data_path="location", frame=f)
-
-    # Update Time
-    relative_time += TIME
+    # Set frames
+    frames = range(TOTAL_FRAMES)
     
-    if f == FRAME_RATE/2:
-        accel_car = 0
-        container.v_x = 0
-        relative_time = 0
+    for f in frames:
+        
+        # Calculate next position
+        container.rectilinear_move(accel_car, TIME, axis="x")
+        marble.oscillate(relative_time, accel=-accel_car, accel_angle=0)
+        
+        # Set current frame
+        context.scene.frame_set(f)
+        
+        # Get marble position
+        marble_object.location = marble.get_cartesien_position()
+        container_object.location = container.get_cartesien_position()
+        # Insert keyframe
+        marble_object.keyframe_insert(data_path="location", frame=f)
+        container_object.keyframe_insert(data_path="location", frame=f)
 
-# Marble oscillation sim
-# 
-# for f in frames:
-#    
-#    # Calculate next position
-#    marble.oscillate(relative_time, accel=accel_car, accel_angle=0)
-#    
-#    # Set current frame
-#    context.scene.frame_set(f)
-#    
-#    # Get marble position
-#    marble_object.location = marble.get_cartesien_position()
-#    
-#    # Insert keyframe
-#    bpy.ops.anim.keyframe_insert(type="LocRotScale")
-
-#    # Update Time
-#    relative_time += TIME
-#    
-#    if f == FRAME_RATE:
-#        accel_car = 0
-#        relative_time = 0
+        # Update Time
+        relative_time += TIME
+        
+        if f == FRAME_RATE/2:
+            accel_car = 0
+            container.v_x = 0
+            relative_time = 0
 
 
-# Container movement sim
-#
-#for f in frames:
-#    # Calculate next position
-#    container.rectilinear_move(accel_car, TIME, axis="x")
-#    
-#    # Set current frame
-#    context.scene.frame_set(f)
-#    
-#    # Get marble position
-#    container_object.location = container.get_cartesien_position()
-#    
-#    # Insert keyframe
-#    bpy.ops.anim.keyframe_insert(type="LocRotScale")
-#    
-#    if f == FRAME_RATE:
-#        accel_car = 0
-#        container.v_x = 0
+def sim_marble():
+    # Instantiate a marble
+    marble = Marble(0, 0, 15)
+    
+    # Initial params
+    accel_car = 800
+    relative_time = 0
+    
+    # Clear previous data
+    marble_object.animation_data_clear()
+    
+    # Set frames
+    frames = range(TOTAL_FRAMES)
+    
+    # Clear previous data
+    marble_object.animation_data_clear()
+    
+    for f in frames:
+        
+        # Calculate next position
+        marble.oscillate(relative_time, accel=accel_car, accel_angle=0)
+        
+        # Set current frame
+        context.scene.frame_set(f)
+        
+        # Get marble position
+        marble_object.location = marble.get_cartesien_position()
+        
+        # Insert keyframe
+        marble_object.keyframe_insert(data_path="location", frame=f)
+
+        # Update Time
+        relative_time += TIME
+        
+        if f == FRAME_RATE:
+            accel_car = 0
+            relative_time = 0
+ 
+            
+def sim_container():
+    # Instantiate a container
+    container = Container(0, 0, 5)
+    
+    # Initial params
+    accel_car = 800
+    relative_time = 0
+    
+    # Set frames
+    frames = range(TOTAL_FRAMES)
+    
+    # Clear Previous data
+    container_object.animation_data_clear()
+    
+    for f in frames:
+        # Calculate next position
+        container.rectilinear_move(accel_car, TIME, axis="x")
+        
+        # Set current frame
+        context.scene.frame_set(f)
+        
+        # Get marble position
+        container_object.location = container.get_cartesien_position()
+        
+        # Insert keyframe
+        container_object.keyframe_insert(data_path="location", frame=f)
+        
+        if f == FRAME_RATE:
+            accel_car = 0
+            container.v_x = 0
+        
+     
+sim_all()
         
 bpy.ops.screen.animation_play()
