@@ -25,24 +25,37 @@ class Container:
         self.z = z
 
         self.v_x = 0
-        self.v_z = 0
+        self.v_y = 0
+        
+        self.marble = Marble(self.x, self.y, 15)
 
-        self.a_x = 0
-        self.a_z = 0
-
-    def get_cartesien_position(self):
+    def get_position(self):
         return (self.x, self.y, self.z)
     
+    def get_marble_position(self):
+        return self.marble.get_cartesien_position()
+        
     """
     direction = ["x", "z"]
     """
-    def rectilinear_move(self, a, t, axis="x"):
-        if axis == "x":
-            self.v_x += a*t
-            self.x += self.v_x*t + 0.5*a*t**2
-        elif axis == "z":
-            self.v_z += a*t
-            self.z += self.v_z*t + 0.5*a*t**2
+    def rectilinear_move(self, a, t, angle=0, stop=False):
+        
+        if not stop:    
+            a_x = a*cos(angle)
+            a_y = a*sin(angle)
+            
+            self.v_x += a_x*TIME
+            self.x += self.v_x*TIME + 0.5*a_x*TIME**2
+            
+            self.v_y += a_y*t
+            self.y += self.v_y*TIME + 0.5*a_y*TIME**2
+            
+        else:
+            self.v_x = 0
+            self.v_y = 0
+        
+        # Make marble oscillate inside the container
+        self.marble.oscillate(t, accel=-a, accel_angle=angle) 
 
 
 class Marble:
@@ -110,7 +123,6 @@ class Simulation:
         self.container_object = bpy.context.scene.objects["Container"]
         
         # Animation data
-        self.marble = Marble(0, 0, 15)
         self.container = Container(0, 0, 5)
         
         self.accel_car = 800
@@ -121,6 +133,7 @@ class Simulation:
     def sim_all(self):
         self.marble_object.animation_data_clear()
         self.container_object.animation_data_clear()
+        c_stop = False
         
         for f in self.frames:
             
@@ -128,19 +141,19 @@ class Simulation:
                 self.last_timestamp = self.time
                 self.accel_car = 0
             elif f == 30:
-                self.container.v_x = 0
+                c_stop = True
+                self.accel_car = -800
                 
             # Calculate next position
             current_time = self.time - self.last_timestamp
-            self.container.rectilinear_move(self.accel_car, TIME, axis="x")
-            self.marble.oscillate(current_time, accel=-self.accel_car, accel_angle=0)
+            self.container.rectilinear_move(self.accel_car, current_time, angle=0, stop=c_stop)
             
             # Set current frame
             context.scene.frame_set(f)
             
             # Get marble position
-            self.marble_object.location = self.marble.get_cartesien_position()
-            self.container_object.location = self.container.get_cartesien_position()
+            self.marble_object.location = self.container.get_marble_position()
+            self.container_object.location = self.container.get_position()
             
             # Insert keyframe
             self.marble_object.keyframe_insert(data_path="location", frame=f)
