@@ -15,6 +15,31 @@ FRAME_RATE = 30
 TOTAL_FRAMES = 300
 TIME = 1 / FRAME_RATE
 
+class Container:
+    def __init__(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
+
+        self.v_x = 0
+        self.v_z = 0
+
+        self.a_x = 0
+        self.a_z = 0
+
+    def get_position(self):
+        return (self.x, self.y, self.z)
+
+    """
+    direction = ["x", "z"]
+    """
+    def rectilinear_move(self, a, t, axis="x"):
+        if axis == "x":
+            self.v_x += a*t
+            self.x += self.v_x*t + 0.5*a*t**2
+        elif axis == "z":
+            self.v_z += a*t
+            self.z += self.v_z*t + 0.5*a*t**2
 
 class Marble:
     def __init__(self, x, y, z):
@@ -39,7 +64,6 @@ class Marble:
         accel = max_theta*sin(f*t)
 
         max_time = (pi/2)/f
-        print(max_time)
 
         theta = accel if t < max_time else max_theta
 
@@ -64,26 +88,48 @@ class Marble:
 
 
 if __name__ == "__main__":
+    sim = None
 
-    marble = Marble(0, 0, 0)
-    accel_car = 1.3
-    thetas = []
-    relative_time = 0
+    while sim != "a":
+        sim = input("Marble (m), Container (c), Abort(a) :: ")
 
-    for i in range(TOTAL_FRAMES):
-
-        marble.oscillate(relative_time, accel=accel_car)
-
-        relative_time += TIME
-
-        if i == FRAME_RATE:
+        if sim == "m":
+            marble = Marble(0, 0, 0)
+            accel_car = 1.3
+            thetas = []
             relative_time = 0
-            accel_car = 0
 
-        thetas.append(marble.angular_position)
+            for i in range(TOTAL_FRAMES):
 
+                marble.oscillate(relative_time, accel=accel_car)
 
-    plt.figure()
-    plt.plot(thetas)
-    plt.title("Angular Position")
-    plt.show()
+                relative_time += TIME
+
+                if i == FRAME_RATE:
+                    relative_time = 0
+                    accel_car = 0
+
+                thetas.append(marble.angular_position)
+
+            plt.figure()
+            plt.plot(thetas)
+            plt.title("Angular Position")
+            plt.show()
+
+        elif sim == "c":
+            container = Container(0,0,0)
+            accel = 1.340
+            positions = []
+
+            for i in range(TOTAL_FRAMES):
+                container.rectilinear_move(accel, TIME, axis="x")
+
+                positions.append(container.x)
+
+                if i == FRAME_RATE:
+                    accel = 0
+
+            plt.figure()
+            plt.plot(positions)
+            plt.title("Position")
+            plt.show()
