@@ -18,27 +18,28 @@ class Marble:
         self.y = y
         self.z = z
 
-        self.alpha = 0
+        self.alpha = accel
+        self.alpha_angle = 0
         self.omega = 0
         self.theta = asin(sqrt(x ** 2 + z ** 2))
 
         self.init_theta = self.theta
         self.init_omega = self.omega
 
-        self.accel = accel
         self.rel_time = 0
 
     def get_cartesian_position(self):
         return self.x, self.y, self.z
 
-    def update_cartesian_position(self, angle):
+    def update_cartesian_position(self):
         linear_displacement = ROTATION_RADIUS * sin(self.theta)
-        self.x = linear_displacement * cos(angle)
-        self.y = linear_displacement * sin(angle)
+        self.x = linear_displacement * cos(self.alpha_angle)
+        self.y = linear_displacement * sin(self.alpha_angle)
 
     def compute_theta(self):
         damping_factor = exp(-DAMP * self.rel_time)
-        C = -self.accel / ROTATION_RADIUS
+
+        C = -self.alpha / ROTATION_RADIUS
 
         A = self.init_theta - C / Z ** 2
         B = self.init_omega / Z
@@ -50,7 +51,8 @@ class Marble:
 
     def compute_omega(self):
         damping_factor = exp(-DAMP * self.rel_time)
-        C = -self.accel / ROTATION_RADIUS
+
+        C = -self.alpha / ROTATION_RADIUS
 
         A = self.init_theta - C / Z ** 2
         B = self.init_omega / Z
@@ -67,15 +69,18 @@ class Marble:
 
         self.theta = self.compute_theta()
         self.omega = self.compute_omega()
+
+        self.update_cartesian_position()
         self.rel_time += TIME
 
     def set_accel(self, accel, angle=0.0):
-        self.accel = accel
+        self.alpha = accel
+        self.alpha_angle = angle
         self.rel_time = TIME
 
 
 if __name__ == "__main__":
-    marble = Marble(accel=0.1)
+    marble = Marble(accel=1.3)
     positions = []
     velocities = []
 
