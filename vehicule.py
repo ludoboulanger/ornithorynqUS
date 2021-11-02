@@ -1,6 +1,6 @@
-# Librairie pour simuler le véhicule du projet S5i
-# Simulation dans blender
-
+import time
+import bpy
+from bpy import data as d
 import math
 
 class vehiculesim:
@@ -80,3 +80,19 @@ class vehiculesim:
             print("Erreur, état invalide")
 
         return self._coordinates
+    
+def framehandler(scene):
+    #d.objects["Cube"].location = vehicule.update()
+    print(a)
+
+
+if __name__ == "__main__":
+    print("Simulation démarre")
+    vehicule = vehiculesim(30, [0, 0, 0], 0)
+    bpy.app.handlers.frame_change_post.append(framehandler)
+    bvehicule = d.objects["Cube"]
+    vehicule.speed(0.18)
+    vehicule.turn_straight()
+    vehicule.forward()
+    time.sleep(5)
+    vehicule.stop()
