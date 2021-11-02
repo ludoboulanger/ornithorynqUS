@@ -1,14 +1,58 @@
-from matplotlib import pyplot as plt
-from math import sin, cos, asin, sqrt, exp
+import bpy
+from bpy import context
 
-ROTATION_RADIUS = 0.140
+from math import pi
+from math import exp, sqrt, sin, cos, asin, atan
+
+ROTATION_RADIUS = 140
+CONTAINER_HEIGHT = 8.5 # 10mm - 1.5mm concavity
+MARBLE_MASS = 0.0052
+G = 9810
 DAMP = 1
-G = 9.81
 Z = sqrt(G / ROTATION_RADIUS)
 
-TOTAL_FRAMES = 300
 FRAME_RATE = 30
+TOTAL_FRAMES = 120
 TIME = 1 / FRAME_RATE
+
+class Container:
+    def __init__(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
+
+        self.v_x = 0
+        self.v_y = 0
+        
+        self.marble = Marble(self.x, self.y, 15)
+
+    def get_position(self):
+        return (self.x, self.y, self.z)
+    
+    def get_marble_position(self):
+        return self.marble.get_cartesien_position()
+        
+    """
+    direction = ["x", "z"]
+    """
+    def rectilinear_move(self, a, t, angle=0, stop=False):
+        
+        if not stop:    
+            a_x = a*cos(angle)
+            a_y = a*sin(angle)
+            
+            self.v_x += a_x*TIME
+            self.x += self.v_x*TIME + 0.5*a_x*TIME**2
+            
+            self.v_y += a_y*t
+            self.y += self.v_y*TIME + 0.5*a_y*TIME**2
+            
+        else:
+            self.v_x = 0
+            self.v_y = 0
+        
+        # Make marble oscillate inside the container
+        self.marble.oscillate(t, accel=-a, accel_angle=angle) 
 
 
 class Marble:
@@ -77,30 +121,40 @@ class Marble:
         self.alpha = accel
         self.alpha_angle = angle
         self.rel_time = TIME
+        
+        
+def sim_marble():
+   
+    marble_object = bpy.context.scene.objects["Marble"]
+    marble_object.animation_data_clear()
+    marble = Marble(x=0, y=0, z=0, accel=800)
+   
+    frames = range(TOTAL_FRAMES)
+   
+    for f in frames:
+        print("FRAME :: ", f)
+        # Calculate next position
+        marble.simulate()
+       
+        # Set current frame
+        context.scene.frame_set(f)
+       
+        # Get marble position
+        marble_object.location = marble.get_cartesian_position()
 
+        print("POSITION :: ", marble_object.location)
+       
+        # Insert keyframe
+        marble_object.keyframe_insert(data_path="location", frame=f)
+       
+        if f == 12:
+            marble.set_accel(0)
+
+        if f == 80:
+            marble.set_accel(-800)
+
+        if f == 92:
+            marble.set_accel(0)
 
 if __name__ == "__main__":
-    marble = Marble(accel=1.3)
-    positions = []
-    velocities = []
-
-    for i in range(TOTAL_FRAMES):
-        if i == 12:
-            marble.set_accel(0)
-
-        if i == 80:
-            marble.set_accel(-0.1)
-
-        if i == 92:
-            marble.set_accel(0)
-
-        marble.simulate()
-        positions.append(marble.theta)
-        velocities.append(marble.omega)
-
-    plt.figure()
-    plt.plot(positions)
-
-    plt.figure()
-    plt.plot(velocities)
-    plt.show()
+    sim_marble()
