@@ -45,7 +45,7 @@ class Marble:
         B = self.init_omega / Z
 
         pos = A * cos(Z * self.rel_time) + \
-              B * cos(Z * self.rel_time) + C / Z ** 2
+              B * sin(Z * self.rel_time) + C / Z ** 2
 
         return damping_factor * pos
 
@@ -57,7 +57,7 @@ class Marble:
         A = self.init_theta - C / Z ** 2
         B = self.init_omega / Z
 
-        pos = A * cos(Z * self.rel_time) + B * cos(Z * self.rel_time) + C / Z ** 2
+        pos = A * cos(Z * self.rel_time) + B * sin(Z * self.rel_time) + C / Z ** 2
         vel = -A * sin(Z * self.rel_time) * Z + B * cos(Z * self.rel_time) * Z
 
         return vel * damping_factor + -DAMP * damping_factor * pos

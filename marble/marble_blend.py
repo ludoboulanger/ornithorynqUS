@@ -89,7 +89,7 @@ class Marble:
         B = self.init_omega / Z
 
         pos = A * cos(Z * self.rel_time) + \
-              B * cos(Z * self.rel_time) + C / Z ** 2
+              B * sin(Z * self.rel_time) + C / Z ** 2
 
         return damping_factor * pos
 
@@ -101,7 +101,7 @@ class Marble:
         A = self.init_theta - C / Z ** 2
         B = self.init_omega / Z
 
-        pos = A * cos(Z * self.rel_time) + B * cos(Z * self.rel_time) + C / Z ** 2
+        pos = A * cos(Z * self.rel_time) + B * sin(Z * self.rel_time) + C / Z ** 2
         vel = -A * sin(Z * self.rel_time) * Z + B * cos(Z * self.rel_time) * Z
 
         return vel * damping_factor + -DAMP * damping_factor * pos
@@ -127,7 +127,7 @@ def sim_marble():
    
     marble_object = bpy.context.scene.objects["Marble"]
     marble_object.animation_data_clear()
-    marble = Marble(x=0, y=0, z=0, accel=800)
+    marble = Marble(x=0, y=0, z=0, accel=1300)
    
     frames = range(TOTAL_FRAMES)
    
@@ -151,7 +151,7 @@ def sim_marble():
             marble.set_accel(0)
 
         if f == 80:
-            marble.set_accel(-800)
+            marble.set_accel(-1300)
 
         if f == 92:
             marble.set_accel(0)
