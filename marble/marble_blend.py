@@ -36,32 +36,50 @@ class Container:
     def get_marble_position(self):
         return self.marble.get_cartesian_position()
     
-    def compute_rect_position():
-        x = self.v_x*TIME + 0.5*self.a_x*TIME**2
-        y = self.v_y*TIME + 0.5*self.a_y*TIME**2
-        
-        return x, y
-    
-    def compute_rect_velocity():
-        x = self.a_x*TIME
-        y = self.a_y*TIME
-        
-        return x, y
-    
     def set_acceleration(self, accel, angle=0):
         
         self.a_x = accel*cos(angle)
         self.a_y = accel*sin(angle)
         
         self.marble.set_acceleration(accel, angle)
+    
+    def compute_rect_position(self):
+        x = self.v_x*TIME + 0.5*self.a_x*TIME**2
+        y = self.v_y*TIME + 0.5*self.a_y*TIME**2
         
-    def rectilinear_move(self):
+        return x, y
+    
+    def compute_rect_velocity(self):
+        x = self.a_x*TIME
+        y = self.a_y*TIME
         
-        self.v_x += self.a_x*TIME
-        self.x += self.v_x*TIME + 0.5*self.a_x*TIME**2
+        return x, y
         
-        self.v_y += self.a_y*TIME
-        self.y += self.v_y*TIME + 0.5*self.a_y*TIME**2
+    def rectilinear_move(self, stopping=False):
+        
+        # Compute new velocities
+        v_x, v_y = self.compute_rect_velocity()
+        
+        if stopping:
+            # Need to check if there was a sign change in velocities
+            # If so, make velocities 0
+            if self.v_x >= 0 and v_x <= 0 or self.v_x <= 0 and v_x >= 0:
+                v_x = 0
+                self.v_x = 0
+                self.a_x = 0
+            if self.v_y >= 0 and v_y <= 0 or self.v_y <= 0 and v_y >= 0:
+                v_y = 0
+                self.v_y = 0
+                self.a_y = 0
+        
+        # Compute new positions        
+        x, y = self.compute_rect_position()
+        
+        self.v_x += v_x
+        self.x += x
+        
+        self.v_y += v_y
+        self.y += y
         
         # Make marble oscillate inside the container
         self.marble.simulate() 
@@ -135,7 +153,13 @@ class Marble:
         self.set_cartesian_position()
         self.rel_time += TIME
         
-        
+   
+###############################################################################################     
+
+#                                             SIMULATIONS                                     #
+
+###############################################################################################
+
 def sim_marble():
    
     marble_object = bpy.context.scene.objects["Marble"]
@@ -181,17 +205,19 @@ def sim_all():
     container_object.animation_data_clear()
     
     car_accel = 1000
+    accel_angle = pi/2
+    car_stopping = False
     
     container = Container(z=5)
     
-    container.set_acceleration(car_accel)
+    container.set_acceleration(car_accel, angle=accel_angle)
     
     frames = range(TOTAL_FRAMES)
     
     for f in frames:
         print("FRAME :: ", f)
         # Calculate next position
-        container.rectilinear_move()
+        container.rectilinear_move(stopping=car_stopping)
         
         # Set current frame
         context.scene.frame_set(f)
@@ -207,13 +233,25 @@ def sim_all():
         container_object.keyframe_insert(data_path="location", frame=f)
        
         if f == 10:
-            container.set_acceleration(0)
+            container.set_acceleration(car_accel, angle=accel_angle)
 
         if f == 30:
-            container.set_acceleration(-car_accel)
+            car_stopping=True
+            container.set_acceleration(-car_accel, angle=accel_angle)
 
         if f == 40:
-            container.set_acceleration(0)
+            container.set_acceleration(0, angle=accel_angle)
+            car_stopping = False
+            
+#        if f == 50:
+#            container.set_acceleration(car_accel, angle=(pi/2))
+#            
+#        if f == 70:
+#            car_stopping=True
+#            container.set_acceleration(-car_accel, angle=(pi/2))
+#            
+#        if f == 80:
+#            container.set_acceleration(0, angle=(pi/2))
 
 if __name__ == "__main__":
     sim_all()
