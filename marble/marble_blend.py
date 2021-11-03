@@ -7,6 +7,7 @@ from math import exp, sqrt, sin, cos, asin, atan
 ROTATION_RADIUS = 140
 CONTAINER_HEIGHT = 8.5 # 10mm - 1.5mm concavity
 MARBLE_MASS = 0.0052
+MARBLE_R = 7.5
 G = 9810
 DAMP = 1
 Z = sqrt(G / ROTATION_RADIUS)
@@ -65,7 +66,7 @@ class Marble:
         self.alpha = accel
         self.alpha_angle = 0
         self.omega = 0
-        self.theta = asin(sqrt(x ** 2 + z ** 2) / ROTATION_RADIUS)
+        self.theta = asin(sqrt(x ** 2 + y ** 2) / ROTATION_RADIUS)
 
         self.init_theta = self.theta
         self.init_omega = self.omega
@@ -79,6 +80,7 @@ class Marble:
         linear_displacement = ROTATION_RADIUS * sin(self.theta)
         self.x = linear_displacement * cos(self.alpha_angle)
         self.y = linear_displacement * sin(self.alpha_angle)
+        # self.z = MARBLE_R + CONTAINER_HEIGHT + ROTATION_RADIUS*(1 - cos(self.theta))
 
     def compute_theta(self):
         damping_factor = exp(-DAMP * self.rel_time)
@@ -127,7 +129,7 @@ def sim_marble():
    
     marble_object = bpy.context.scene.objects["Marble"]
     marble_object.animation_data_clear()
-    marble = Marble(x=0, y=0, z=0, accel=1300)
+    marble = Marble(x=0, y=0, z=15, accel=1300)
    
     frames = range(TOTAL_FRAMES)
    

@@ -21,7 +21,7 @@ class Marble:
         self.alpha = accel
         self.alpha_angle = 0
         self.omega = 0
-        self.theta = asin(sqrt(x ** 2 + z ** 2) / ROTATION_RADIUS)
+        self.theta = asin(sqrt(x ** 2 + y ** 2) / ROTATION_RADIUS)
 
         self.init_theta = self.theta
         self.init_omega = self.omega
@@ -36,31 +36,37 @@ class Marble:
         self.x = linear_displacement * cos(self.alpha_angle)
         self.y = linear_displacement * sin(self.alpha_angle)
 
-    def compute_theta(self):
-        damping_factor = exp(-DAMP * self.rel_time)
-
+    def compute_raw_position(self):
         C = -self.alpha / ROTATION_RADIUS
 
         A = self.init_theta - C / Z ** 2
         B = self.init_omega / Z
 
-        pos = A * cos(Z * self.rel_time) + \
-              B * sin(Z * self.rel_time) + C / Z ** 2
+        return A * cos(Z * self.rel_time) + \
+               B * sin(Z * self.rel_time) + C / Z ** 2
 
-        return damping_factor * pos
+    def compute_raw_velocity(self):
+        C = -self.alpha / ROTATION_RADIUS
+
+        A = self.init_theta - C / Z ** 2
+        B = self.init_omega / Z
+
+        return -A * sin(Z * self.rel_time) * Z + B * cos(Z * self.rel_time) * Z
+
+    def compute_theta(self):
+        damping_factor = exp(-DAMP * self.rel_time)
+
+        raw_position = self.compute_raw_position()
+
+        return damping_factor * raw_position
 
     def compute_omega(self):
         damping_factor = exp(-DAMP * self.rel_time)
 
-        C = -self.alpha / ROTATION_RADIUS
+        raw_position = self.compute_raw_position()
+        raw_velocity = self.compute_raw_velocity()
 
-        A = self.init_theta - C / Z ** 2
-        B = self.init_omega / Z
-
-        pos = A * cos(Z * self.rel_time) + B * sin(Z * self.rel_time) + C / Z ** 2
-        vel = -A * sin(Z * self.rel_time) * Z + B * cos(Z * self.rel_time) * Z
-
-        return vel * damping_factor + -DAMP * damping_factor * pos
+        return raw_velocity * damping_factor + -DAMP * damping_factor * raw_position
 
     def simulate(self):
         if self.rel_time == TIME:
@@ -85,14 +91,14 @@ if __name__ == "__main__":
     velocities = []
 
     for i in range(TOTAL_FRAMES):
-        if i == 12:
+        if i == 15:
             marble.set_accel(0)
 
-        if i == 80:
-            marble.set_accel(-0.1)
-
-        if i == 92:
-            marble.set_accel(0)
+        # if i == 80:
+        #     marble.set_accel(-1.3)
+        #
+        # if i == 92:
+        #     marble.set_accel(0)
 
         marble.simulate()
         positions.append(marble.theta)
