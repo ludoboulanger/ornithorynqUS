@@ -5,6 +5,8 @@ ROTATION_RADIUS = 0.140
 DAMP = 1
 G = 9.81
 Z = sqrt(G / ROTATION_RADIUS)
+CONTAINER_HEIGHT = 0.0085
+MARBLE_R = 0.005
 
 TOTAL_FRAMES = 300
 FRAME_RATE = 30
@@ -35,6 +37,8 @@ class Marble:
         linear_displacement = ROTATION_RADIUS * sin(self.theta)
         self.x = linear_displacement * cos(self.alpha_angle)
         self.y = linear_displacement * sin(self.alpha_angle)
+        self.z = MARBLE_R + CONTAINER_HEIGHT + ROTATION_RADIUS * \
+                 (1 - cos(self.theta))
 
     def compute_raw_position(self):
         C = -self.alpha / ROTATION_RADIUS
