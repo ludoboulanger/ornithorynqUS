@@ -1,158 +1,181 @@
 import bpy
 from bpy import context
-
+import numpy as np
 from math import pi
 from math import exp, sqrt, sin, cos, asin, atan
 
 ROTATION_RADIUS = 140
 CONTAINER_HEIGHT = 8.5 # 10mm - 1.5mm concavity
 MARBLE_MASS = 0.0052
+MARBLE_R = 7.5
 G = 9810
-
-LAMBDA = 0.01
-K = sqrt(MARBLE_MASS * G / ROTATION_RADIUS)
-H = sqrt(K**2/MARBLE_MASS - LAMBDA**2 / (4*MARBLE_MASS**2))
-J = -LAMBDA/(2*MARBLE_MASS)
+DAMP = 1
+Z = sqrt(G / ROTATION_RADIUS)
 
 FRAME_RATE = 30
 TOTAL_FRAMES = 120
 TIME = 1 / FRAME_RATE
 
 class Container:
-    def __init__(self, x, y, z):
+    def __init__(self, x=0, y=0, z=0):
         self.x = x
         self.y = y
         self.z = z
-
+        
         self.v_x = 0
         self.v_y = 0
         
-        self.marble = Marble(self.x, self.y, 15)
+        self.a_x = 0
+        self.a_y = 0
+        
+        self.marble = Marble(x=self.x, y=self.y, z=15)
 
     def get_position(self):
         return (self.x, self.y, self.z)
     
     def get_marble_position(self):
-        return self.marble.get_cartesien_position()
+        return self.marble.get_cartesian_position()
+    
+    def set_acceleration(self, accel, angle=0):
         
-    """
-    direction = ["x", "z"]
-    """
-    def rectilinear_move(self, a, t, angle=0, stop=False):
+        self.a_x = accel*cos(angle)
+        self.a_y = accel*sin(angle)
         
-        if not stop:    
-            a_x = a*cos(angle)
-            a_y = a*sin(angle)
-            
-            self.v_x += a_x*TIME
-            self.x += self.v_x*TIME + 0.5*a_x*TIME**2
-            
-            self.v_y += a_y*t
-            self.y += self.v_y*TIME + 0.5*a_y*TIME**2
-            
-        else:
-            self.v_x = 0
-            self.v_y = 0
+        self.marble.set_acceleration(accel, angle)
+    
+    def compute_rect_position(self):
+        x = self.v_x*TIME + 0.5*self.a_x*TIME**2
+        y = self.v_y*TIME + 0.5*self.a_y*TIME**2
+        
+        return x, y
+    
+    def compute_rect_velocity(self):
+        x = self.a_x*TIME
+        y = self.a_y*TIME
+        
+        return x, y
+        
+    def rectilinear_move(self, stopping=False):
+        
+        # Compute new velocities
+        v_x, v_y = self.compute_rect_velocity()
+        
+        if stopping:
+            # Need to check if there was a sign change in velocities
+            # If so, make velocities 0
+            if self.v_x >= 0 and v_x <= 0 or self.v_x <= 0 and v_x >= 0:
+                v_x = 0
+                self.v_x = 0
+                self.a_x = 0
+            if self.v_y >= 0 and v_y <= 0 or self.v_y <= 0 and v_y >= 0:
+                v_y = 0
+                self.v_y = 0
+                self.a_y = 0
+        
+        # Compute new positions        
+        x, y = self.compute_rect_position()
+        
+        self.v_x += v_x
+        self.x += x
+        
+        self.v_y += v_y
+        self.y += y
         
         # Make marble oscillate inside the container
-        self.marble.oscillate(t, accel=-a, accel_angle=angle) 
+        self.marble.simulate() 
 
 
 class Marble:
 
-    def __init__(self, x, y, z):
+    def __init__(self, x=0.0, y=0.0, z=0.0, accel=0.0, angle = 0.0):
         self.x = x
         self.y = y
         self.z = z
 
-        self.initial_theta = asin(sqrt(x**2 + y**2) / ROTATION_RADIUS)
-        self.initial_velocity = 0
+        self.alpha = np.array([accel*cos(angle), accel*sin(angle)])
+        self.omega = np.array([0,0])
+        self.theta = np.arcsin(np.array([x,y]) / ROTATION_RADIUS)
 
-        self.angular_position = self.initial_theta
+        self.init_theta = self.theta
+        self.init_omega = self.omega
 
-        self.angular_velocity = 0
+        self.rel_time = 0
 
-        self.angular_acceleration = 0
-        self.acceleration_offset = 0
-        
     def get_cartesian_position(self):
-        return (self.x, self.y, self.z)
-    
-    def update_cartesian_position(self, angle):
-        # Calculate linear displacement
-        linear_displacement = ROTATION_RADIUS*sin(self.angular_position)
-            
-        self.x = linear_displacement*cos(angle)
-        self.y = linear_displacement*sin(angle)
+        return self.x, self.y, self.z
+
+    def set_cartesian_position(self):
+        linear_displacement = ROTATION_RADIUS * np.sin(self.theta)
+        self.x = linear_displacement[0]
+        self.y = linear_displacement[1] 
+        # self.z = MARBLE_R + CONTAINER_HEIGHT + ROTATION_RADIUS*(1 - cos(self.theta))
         
-        # self.z = CONTAINER_HEIGHT + ROTATION_RADIUS*(1 - cos(self.angular_position))
+    def set_acceleration(self, accel, angle=0.0):
+        self.alpha = np.array([accel * cos(angle), accel * sin(angle)])
+        self.rel_time = TIME
+
+    def compute_theta(self):
+        damping_factor = exp(-DAMP * self.rel_time)
+
+        C = -self.alpha / ROTATION_RADIUS
+
+        A = self.init_theta - C / Z ** 2
+        B = self.init_omega / Z
+
+        pos = A * np.cos(Z * self.rel_time) + \
+              B * np.sin(Z * self.rel_time) + C / Z ** 2
+
+        return damping_factor * pos
+
+    def compute_omega(self):
+        damping_factor = exp(-DAMP * self.rel_time)
+
+        C = -self.alpha / ROTATION_RADIUS
+
+        A = self.init_theta - C / Z ** 2
+        B = self.init_omega / Z
+
+        pos = A * np.cos(Z * self.rel_time) + B * np.sin(Z * self.rel_time) + C / Z ** 2
+        vel = -A * np.sin(Z * self.rel_time) * Z + B * np.cos(Z * self.rel_time) * Z
+
+        return vel * damping_factor + -DAMP * damping_factor * pos
+
+    def simulate(self):
+        if self.rel_time == TIME:
+            print(self.omega)
+            print(self.theta)
+            self.init_omega = self.omega
+            self.init_theta = self.theta
+
+        self.theta = self.compute_theta()
+        self.omega = self.compute_omega()
+
+        self.set_cartesian_position()
+        self.rel_time += TIME
         
-    def compute_angular_position(self, time):
-        A = self.initial_theta
-        B = self.initial_velocity
-        return exp(J*time)*(A*cos(H*time) + B*sin(H*time))
+   
+###############################################################################################     
 
-    def compute_angular_velocity(self, time):
-        A = self.initial_theta
-        B = self.initial_velocity
-        return exp(J*time)*(J*(A*cos(H*time) + B*sin(H*time)) + H*(B*cos(H*time) - A*(H*time)))
-        
-    def accelerate(self, a, t):
+#                                             SIMULATIONS                                     #
 
-        max_theta = atan(a / G)
-        f = 1 / sqrt(ROTATION_RADIUS / sqrt(G**2 + a**2))
+###############################################################################################
 
-        if t == TIME:
-            # set initial accel time
-            self.acceleration_offset = self.angular_position
-
-        accel = max_theta*sin(f*t - self.acceleration_offset)
-        diff_accel = 0 #max_theta*f*cos(f*(t + self.acceleration_offset))
-
-        theta = accel
-        omega = diff_accel
-
-        self.angular_position = theta
-        self.angular_velocity = omega
-
-    def oscillate(self, time):
-        
-        if time == TIME:
-            self.initial_theta =  self.angular_position
-            self.initial_velocity = self.angular_velocity
-            print("Setting initial theta to :: ", self.initial_theta)
-
-        self.angular_position = self.compute_angular_position(time)
-        self.angular_velocity = self.compute_angular_velocity(time)
-        print("NEW ANGULAR POSITION :: ", self.angular_position)
-
-
-    def sim_oscillation(self, time, accel=0, angle=0):
-
-        if accel == 0:
-            self.oscillate(time)
-        else:
-            self.accelerate(accel, time)
-    
-        # Get Cartesian Coordinates    
-        self.update_cartesian_position(angle)
-        
-        
 def sim_marble():
    
     marble_object = bpy.context.scene.objects["Marble"]
+    container_object = bpy.context.scene.objects["Container"]
+    
+    container_object.animation_data_clear()
     marble_object.animation_data_clear()
-    marble = Marble(20, 0, 15)
+    
+    marble = Marble(x=0, y=0, z=15, accel=1000)
    
     frames = range(TOTAL_FRAMES)
-   
-    rel_time = 0
-    accel_car = 0
    
     for f in frames:
         print("FRAME :: ", f)
         # Calculate next position
-        marble.sim_oscillation(rel_time, accel=accel_car, angle=0)
+        marble.simulate()
        
         # Set current frame
         context.scene.frame_set(f)
@@ -164,125 +187,71 @@ def sim_marble():
        
         # Insert keyframe
         marble_object.keyframe_insert(data_path="location", frame=f)
-
-        # Update Time
-        rel_time += TIME
        
-#        if f == 10:
-#            rel_time = TIME
-#            accel_car = 0
+        if f == 12:
+            marble.set_acceleration(0)
 
-#        if f == 45:
-#            rel_time = TIME
-#            accel_car = -1300
+        if f == 80:
+            marble.set_acceleration(-1000)
 
-#        if f == 55:
-#            rel_time = TIME
-#            accel_car = 0
+        if f == 92:
+            marble.set_acceleration(0)
+            
+def sim_all():
+    marble_object = bpy.context.scene.objects["Marble"]
+    container_object = bpy.context.scene.objects["Container"]
+    
+    marble_object.animation_data_clear()
+    container_object.animation_data_clear()
+    
+    car_accel = 1000
+    accel_angle = pi/2
+    car_stopping = False
+    
+    container = Container(z=5)
+    
+    container.set_acceleration(car_accel, angle=accel_angle)
+    
+    frames = range(TOTAL_FRAMES)
+    
+    for f in frames:
+        print("FRAME :: ", f)
+        # Calculate next position
+        container.rectilinear_move(stopping=car_stopping)
         
+        # Set current frame
+        context.scene.frame_set(f)
+       
+        # Get marble position
+        marble_object.location = container.get_marble_position()
         
-#class Simulation:
-#   
-#   def __init__(self):
-#       
-#       # Objects
-#       self.marble_object = bpy.context.scene.objects["Marble"]
-#       self.container_object = bpy.context.scene.objects["Container"]
-#       
-#       # Animation data
-#       self.container = Container(0, 0, 5)
-#       self.marble = Marble(0, 0, 15)
-#       
-#       self.accel_car = 1300
-#       self.time = 0
-#       self.rel_time = 0
-#       self.last_timestamp = 0
-#       self.frames = range(TOTAL_FRAMES)
-#       
-#   def sim_all(self):
-#       self.marble_object.animation_data_clear()
-#       self.container_object.animation_data_clear()
-#       c_stop = False
-#       
-#       for f in self.frames:
-#           
-#           if f == 15:
-#               self.last_timestamp = self.time
-#               self.accel_car = 0
-#           elif f == 30:
-#               c_stop = True
-#               self.accel_car = -800
-#               
-#           # Calculate next position
-#           current_time = self.time - self.last_timestamp
-#           self.container.rectilinear_move(self.accel_car, current_time, angle=0, stop=c_stop)
-#           
-#           # Set current frame
-#           context.scene.frame_set(f)
-#           
-#           # Get marble position
-#           self.marble_object.location = self.container.get_marble_position()
-#           self.container_object.location = self.container.get_position()
-#           
-#           # Insert keyframe
-#           self.marble_object.keyframe_insert(data_path="location", frame=f)
-#           self.container_object.keyframe_insert(data_path="location", frame=f)
+        # Get container position
+        container_object.location = container.get_position()
+       
+        # Insert keyframe
+        marble_object.keyframe_insert(data_path="location", frame=f)
+        container_object.keyframe_insert(data_path="location", frame=f)
+       
+        if f == 10:
+            container.set_acceleration(car_accel, angle=accel_angle)
 
-#           # Update Time
-#           self.time += TIME
-#               
-#       bpy.ops.screen.animation_play()
+        if f == 30:
+            car_stopping=True
+            container.set_acceleration(-car_accel, angle=accel_angle)
 
-#   def sim_marble(self):
-
-#       # Clear previous data
-#       self.marble_object.animation_data_clear()
-#       self.container_object.animation_data_clear()
-#       
-#       for f in self.frames:
-#           print("FRAME :: ", f)
-#           # Calculate next position
-#           self.marble.sim_oscillation(self.rel_time, accel=self.accel_car, angle=0)
-#           
-#           # Set current frame
-#           context.scene.frame_set(f)
-#           
-#           # Get marble position
-#           self.marble_object.location = self.marble.get_cartesian_position()
-
-#           print("POSITION :: ", self.marble_object.location)
-#           
-#           # Insert keyframe
-#           self.marble_object.keyframe_insert(data_path="location", frame=f)
-
-#           # Update Time
-#           self.rel_time += TIME
-#           
-#           if f == FRAME_RATE:
-#               self.accel_car = 0
-#               self.rel_time = 1
-
-#           
-#   def sim_container(self):
-#       self.container_object.animation_data_clear()
-#       
-#       for f in frames:
-#           # Calculate next position
-#           self.container.rectilinear_move(accel_car, TIME, axis="x")
-#           
-#           # Set current frame
-#           context.scene.frame_set(f)
-#           
-#           # Get marble position
-#           self.container_object.location = self.container.get_cartesien_position()
-#           
-#           # Insert keyframe
-#           self.container_object.keyframe_insert(data_path="location", frame=f)
-#           
-#           if f == FRAME_RATE:
-#               self.accel_car = 0
-#               self.container.v_x = 0
-        
+        if f == 40:
+            container.set_acceleration(0, angle=accel_angle)
+            car_stopping = False
+            
+        if f == 50:
+            container.set_acceleration(car_accel, angle=(0))
+            
+        if f == 70:
+            car_stopping=True
+            container.set_acceleration(-car_accel, angle=(0))
+            
+        if f == 80:
+            container.set_acceleration(0, angle=(0))
 
 if __name__ == "__main__":
-    sim_marble()
+    sim_all()
