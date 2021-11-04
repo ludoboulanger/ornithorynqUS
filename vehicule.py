@@ -3,6 +3,9 @@ import bpy
 from bpy import data as d
 import math
 
+coord = [0, 0, 0]
+a = "AAAAAAAAAAAAAAAa"
+
 class vehiculesim:
 
     _coordinates = [0, 0, 0] # Coordonnées du véhicule
@@ -78,6 +81,8 @@ class vehiculesim:
             print("Stop: ", self._coordinates)
         else:
             print("Erreur, état invalide")
+
+        coord = self._coordinates
 
         return self._coordinates
     
