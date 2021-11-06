@@ -1,10 +1,13 @@
 import time
+from datetime import datetime
 import bpy
 from bpy import data as d
 import math
 
-coord = [0, 0, 0]
-a = "AAAAAAAAAAAAAAAa"
+FRAMERATE = 30 # Framerate
+TOTAL_FRAMES = 250 # nombre de frames à simuler
+EMPATTEMENT = 0.14 # 14cm d'empattement
+
 
 class vehiculesim:
 
@@ -29,8 +32,18 @@ class vehiculesim:
 
     # Converti l'angle des roues en radians en rayon de virage en mètres
     # TODO utiliser les vraies valeurs
+    # Pour l'instant on va utiliser un calcul théorique. Cela assume un cas
+    # parfait qui n'est pas réaliste. Un meilleur algo est à faire, basé sur:
+    # https://patentimages.storage.googleapis.com/c9/d1/1a/2826ee9a515566/WO2005102822A1.pdf
     def anglearayon(self, angle):
-        rayon = 0.2 # mètres
+        if angle < 0:
+            return 0
+        elif angle > 180:
+            return 0
+        try:
+            rayon = EMPATTEMENT/math.tan(angle)
+        except:
+            return 0
         return rayon
 
     def speed(self, vitesse):
@@ -61,12 +74,16 @@ class vehiculesim:
     def update(self):
         # Calcul du cap
         circon = self.anglearayon(self._angleroues) * 2 * math.pi
-        if self._state == 1:
-            distanceframe = self._vitesse * self._framelength
-            self._heading = self._heading + ((distanceframe/circon) * 2 * math.pi)
-        elif self._state == 2:
-            distanceframe = -1 * self._vitesse * self._framelength
-            self._heading = self._heading - ((distanceframe/circon) * 2 * math.pi)
+        print(circon)
+        if circon > 0:
+            if self._state == 1 and circon > 0:
+                distanceframe = self._vitesse * self._framelength
+                self._heading = self._heading + ((distanceframe/circon) * 2 * math.pi)
+            elif self._state == 2 and circon > 0:
+                distanceframe = -1 * self._vitesse * self._framelength
+                self._heading = self._heading - ((distanceframe/circon) * 2 * math.pi)
+
+        print("Cap:", self._heading)
 
         # Déplacement
         if self._state == 1:
@@ -82,22 +99,44 @@ class vehiculesim:
         else:
             print("Erreur, état invalide")
 
-        coord = self._coordinates
-
         return self._coordinates
-    
-def framehandler(scene):
-    #d.objects["Cube"].location = vehicule.update()
-    print(a)
+
+def simuler():
+    # Timestamp
+    print("Début de la simlation à ", datetime.now())
+
+    # On vient placer le véhicule au début à 0,0,0
+    bvehicule = d.objects["Cube"]
+    bvehicule.location = [0,0,0]
+    bvehicule.animation_data_clear()
+
+    vehicule = vehiculesim(FRAMERATE, [0, 0, 0], 0)
+    vehicule.speed(3)
+    vehicule.turn(87)
+    vehicule.forward()
+
+
+    frames = range(0, TOTAL_FRAMES)
+    for f in frames:
+        print("Image :", f)
+        # On vient lire le frame actuel
+        bpy.context.scene.frame_set(f)
+
+        # On déplace le véhicule
+        bvehicule.location = vehicule.update()
+
+        # On ajout un keyframe
+        bvehicule.keyframe_insert(data_path="location", frame=f)
+
+        if f == 50:
+            vehicule.turn(90)
+        if f == 100:
+            vehicule.turn(87)
+        if f == 120:
+            vehicule.speed(5)
+        if f == 200:
+            vehicule.backward() 
 
 
 if __name__ == "__main__":
-    print("Simulation démarre")
-    vehicule = vehiculesim(30, [0, 0, 0], 0)
-    bpy.app.handlers.frame_change_post.append(framehandler)
-    bvehicule = d.objects["Cube"]
-    vehicule.speed(0.18)
-    vehicule.turn_straight()
-    vehicule.forward()
-    time.sleep(5)
-    vehicule.stop()
+    simuler()
