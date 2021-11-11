@@ -2,7 +2,7 @@ import time
 from datetime import datetime
 import bpy
 from bpy import data as d
-import math
+import numpy as np
 
 FRAMERATE = 30 # Framerate
 TOTAL_FRAMES = 250 # nombre de frames à simuler
@@ -15,7 +15,7 @@ class vehiculesim:
     _framelength = 0 # Longueur d'un frame, donc le t dans les calculs
     _heading = 0 # Cap du véhicule en radians
     _vitesse = 0 # Vitesse du véhicule actuelle en m/s
-    _angleroues = math.pi/2 # Angle des roues, 90 degrés est le centre
+    _angleroues = np.pi/2 # Angle des roues, 90 degrés est le centre
     _acceleration = 0 # Accélération du véhicule actuelle, en m/s2
     _state = 0 # État, 0 = stop, 1 = avancer, 2 = arrêté
 
@@ -36,13 +36,12 @@ class vehiculesim:
     # parfait qui n'est pas réaliste. Un meilleur algo est à faire, basé sur:
     # https://patentimages.storage.googleapis.com/c9/d1/1a/2826ee9a515566/WO2005102822A1.pdf
     def anglearayon(self, angle):
-        if angle < 0:
-            return 0
-        elif angle > 180:
-            return 0
         try:
-            rayon = EMPATTEMENT/math.tan(angle)
+            print("Angle commandé:", angle)
+            if angle <= np.pi/2:
+                rayon = EMPATTEMENT/np.tan(angle)
         except:
+            print("Erreur de calcul du rayon")
             return 0
         return rayon
 
@@ -51,11 +50,11 @@ class vehiculesim:
 
     # Mettre les roues droites
     def turn_straight(self):
-        self._angleroues = math.radians(90-90)
+        self._angleroues = np.radians(90-90)
 
     # Tourner à un angle, en degrés. 90 est tout droit.
     def turn(self, angle):
-        self._angleroues = math.radians(90-angle)
+        self._angleroues = np.radians(90-angle)
 
     # Avancer
     def forward(self):
@@ -73,26 +72,30 @@ class vehiculesim:
     # Méthode à rouler à chaque frame qui va automatiquement déplacer le véhicule. Ça sert à simuler le comportement du vrai véhicule
     def update(self):
         # Calcul du cap
-        circon = self.anglearayon(self._angleroues) * 2 * math.pi
-        print(circon)
+        circon = self.anglearayon(self._angleroues) * 2 * np.pi
+        print("Circonférence: ", circon)
+        print("self._angleroues:", self._angleroues)
         if circon > 0:
             if self._state == 1 and circon > 0:
                 distanceframe = self._vitesse * self._framelength
-                self._heading = self._heading + ((distanceframe/circon) * 2 * math.pi)
             elif self._state == 2 and circon > 0:
                 distanceframe = -1 * self._vitesse * self._framelength
-                self._heading = self._heading - ((distanceframe/circon) * 2 * math.pi)
+            if self._angleroues >= 0:
+                self._heading = self._heading - ((distanceframe/circon) * 2 * np.pi)
+            else:
+                self._heading = (self._heading + np.pi) - ((distanceframe/circon) * 2 * np.pi)
+
 
         print("Cap:", self._heading)
 
         # Déplacement
         if self._state == 1:
-            self._coordinates[0] = self._coordinates[0] + (self._vitesse * self._framelength * math.cos(self._heading))
-            self._coordinates[1] = self._coordinates[1] + (self._vitesse * self._framelength * math.sin(self._heading))
+            self._coordinates[0] = self._coordinates[0] + (self._vitesse * self._framelength * np.cos(self._heading))
+            self._coordinates[1] = self._coordinates[1] + (self._vitesse * self._framelength * np.sin(self._heading))
             print("Avancer: ", self._coordinates)
         elif self._state == 2:
-            self._coordinates[0] = self._coordinates[0] + (self._vitesse * self._framelength * math.cos(self._heading + math.pi))
-            self._coordinates[1] = self._coordinates[1] + (self._vitesse * self._framelength * math.sin(self._heading + math.pi))
+            self._coordinates[0] = self._coordinates[0] + (self._vitesse * self._framelength * np.cos(self._heading + np.pi))
+            self._coordinates[1] = self._coordinates[1] + (self._vitesse * self._framelength * np.sin(self._heading + np.pi))
             print("Reculer: ", self._coordinates)
         elif self._state == 0:
             print("Stop: ", self._coordinates)
@@ -107,7 +110,9 @@ def simuler():
 
     # On vient placer le véhicule au début à 0,0,0
     bvehicule = d.objects["Cube"]
+    bpy.context.scene.frame_set(0)
     bvehicule.location = [0,0,0]
+    bvehicule.keyframe_insert(data_path="location", frame=0)
     bvehicule.animation_data_clear()
 
     vehicule = vehiculesim(FRAMERATE, [0, 0, 0], 0)
@@ -116,7 +121,7 @@ def simuler():
     vehicule.forward()
 
 
-    frames = range(0, TOTAL_FRAMES)
+    frames = range(1, TOTAL_FRAMES)
     for f in frames:
         print("Image :", f)
         # On vient lire le frame actuel
@@ -129,9 +134,9 @@ def simuler():
         bvehicule.keyframe_insert(data_path="location", frame=f)
 
         if f == 50:
-            vehicule.turn(90)
+            vehicule.turn(105)
         if f == 100:
-            vehicule.turn(87)
+            vehicule.turn(80)
         if f == 120:
             vehicule.speed(5)
         if f == 200:
