@@ -54,7 +54,8 @@ class vehiculesim:
 
     # Tourner à un angle, en degrés. 90 est tout droit.
     def turn(self, angle):
-        self._angleroues = np.radians(90-angle)
+        if angle >= 0:
+            self._angleroues = np.radians(90-angle)
 
     # Avancer
     def forward(self):
@@ -72,18 +73,18 @@ class vehiculesim:
     # Méthode à rouler à chaque frame qui va automatiquement déplacer le véhicule. Ça sert à simuler le comportement du vrai véhicule
     def update(self):
         # Calcul du cap
-        circon = self.anglearayon(self._angleroues) * 2 * np.pi
+        circon = np.abs(self.anglearayon(self._angleroues)) * 2 * np.pi
         print("Circonférence: ", circon)
         print("self._angleroues:", self._angleroues)
         if circon > 0:
-            if self._state == 1 and circon > 0:
+            if self._state == 1:
                 distanceframe = self._vitesse * self._framelength
-            elif self._state == 2 and circon > 0:
+            elif self._state == 2:
                 distanceframe = -1 * self._vitesse * self._framelength
             if self._angleroues >= 0:
                 self._heading = self._heading - ((distanceframe/circon) * 2 * np.pi)
             else:
-                self._heading = (self._heading + np.pi) - ((distanceframe/circon) * 2 * np.pi)
+                self._heading = (self._heading) + ((distanceframe/circon) * 2 * np.pi)
 
 
         print("Cap:", self._heading)
@@ -117,7 +118,8 @@ def simuler():
 
     vehicule = vehiculesim(FRAMERATE, [0, 0, 0], 0)
     vehicule.speed(3)
-    vehicule.turn(87)
+    vehicule.turn(90)
+    #vehicule.turn(87)
     vehicule.forward()
 
 
@@ -134,13 +136,13 @@ def simuler():
         bvehicule.keyframe_insert(data_path="location", frame=f)
 
         if f == 50:
-            vehicule.turn(105)
-        if f == 100:
-            vehicule.turn(80)
-        if f == 120:
-            vehicule.speed(5)
-        if f == 200:
-            vehicule.backward() 
+            vehicule.turn(94)
+        #if f == 100:
+        #    vehicule.backward()
+        #if f == 120:
+        #    vehicule.speed(5)
+        #if f == 200:
+        #    vehicule.forward() 
 
 
 if __name__ == "__main__":
