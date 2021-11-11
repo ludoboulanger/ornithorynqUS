@@ -86,7 +86,6 @@ class vehiculesim:
             else:
                 self._heading = (self._heading) + ((distanceframe/circon) * 2 * np.pi)
 
-
         print("Cap:", self._heading)
 
         # Déplacement
@@ -131,14 +130,16 @@ def simuler():
 
         # On déplace le véhicule
         bvehicule.location = vehicule.update()
+        bvehicule.rotation_euler.z = vehicule._heading
 
         # On ajout un keyframe
         bvehicule.keyframe_insert(data_path="location", frame=f)
+        bvehicule.keyframe_insert("rotation_euler", frame=f)
 
         if f == 50:
-            vehicule.turn(94)
-        #if f == 100:
-        #    vehicule.backward()
+            vehicule.turn(80)
+        if f == 100:
+            vehicule.backward()
         #if f == 120:
         #    vehicule.speed(5)
         #if f == 200:
