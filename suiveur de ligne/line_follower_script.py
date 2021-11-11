@@ -6,7 +6,7 @@ from statistics import mean
 
 ############ Setup ############
 start_pos = (0,0,0)
-start_angle = (0,0,3.14/32)
+start_angle = (0,0,math.pi/32)
 
 ob = bpy.data.objects.get("Suiveur")
 ob.select_set(True)
@@ -50,7 +50,6 @@ def get_angle_to_turn():
     print(read)
     
     if read == [0,0,0,0,0]:
-        print("allo")
         return last_angle
     
     angle = (mean([i for i, n in enumerate(read) if n==1])-2)*-2
