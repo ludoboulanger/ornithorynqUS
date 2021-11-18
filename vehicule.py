@@ -15,6 +15,7 @@ class vehiculesim:
     _framelength = 0 # Longueur d'un frame, donc le t dans les calculs
     _heading = 0 # Cap du véhicule en radians
     _vitesse = 0 # Vitesse du véhicule actuelle en m/s
+    _vitesseprec = 0 # Vitesse précédente du véhicule en m/s. Sert à calculer l'ACCÉLÉRATION
     _angleroues = np.pi/2 # Angle des roues, 90 degrés est le centre
     _acceleration = 0 # Accélération du véhicule actuelle, en m/s2
     _state = 0 # État, 0 = stop, 1 = avancer, 2 = arrêté
@@ -45,7 +46,34 @@ class vehiculesim:
             return 0
         return rayon
 
-    def speed(self, vitesse):
+    # Retourne l'accélération en fonction du changement de vitesse
+    def acceleration(self, diffvitesse):
+        # Sécurité pour la méthode
+        if diffvitesse > 0.27:
+            self._acceleration = 0
+            return 0
+        elif diffvitesse < -0.27:
+            self._acceleration = 0
+            return 0
+
+        if diffvitesse > 0: # Accélération
+            self._acceleration = -794.171873034486*np.power(diffvitesse, 3)+281.9660606932039*np.power(diffvitesse, 2)-0.414200251036732*diffvitesse-0.6495715769694956
+        elif diffvitesse < 0: # Décélération, on assume l'inverse de l'accélération
+            diffvitesse = np.abs(diffvitesse)
+            self._acceleration = -1*(-794.171873034486*np.power(diffvitesse, 3)+281.9660606932039*np.power(diffvitesse, 2)-0.414200251036732*diffvitesse-0.6495715769694956)
+        else:
+            self._acceleration = 0
+        return self._acceleration
+
+    # Ajuste la vitesse du robot, équivalent à la librairie du robot
+    def speed(self, pourcentage):
+        if pourcentage < 0:
+            self._vitesse = 0
+            return
+        if pourcentage > 100:
+            self._vitesse = 0.27
+            return
+        vitesse = 0.002736871508379887*pourcentage-0.01346368715083793
         self._vitesse = vitesse
 
     # Mettre les roues droites
@@ -72,6 +100,10 @@ class vehiculesim:
 
     # Méthode à rouler à chaque frame qui va automatiquement déplacer le véhicule. Ça sert à simuler le comportement du vrai véhicule
     def update(self):
+        # Calcul de l'accélération
+        self._acceleration = self.acceleration(self._vitesse - self._vitesseprec)
+        print("Accélération à: ", self._acceleration)
+
         # Calcul du cap
         circon = np.abs(self.anglearayon(self._angleroues)) * 2 * np.pi
         print("Circonférence: ", circon)
@@ -102,6 +134,8 @@ class vehiculesim:
         else:
             print("Erreur, état invalide")
 
+        # On met à jour l'ancienne vitesse
+        self._vitesseprec = self._vitesse
         return self._coordinates
 
 def simuler():
@@ -116,7 +150,7 @@ def simuler():
     bvehicule.animation_data_clear()
 
     vehicule = vehiculesim(FRAMERATE, [0, 0, 0], 0)
-    vehicule.speed(3)
+    vehicule.speed(100)
     vehicule.turn(90)
     #vehicule.turn(87)
     vehicule.forward()
@@ -136,6 +170,14 @@ def simuler():
         bvehicule.keyframe_insert(data_path="location", frame=f)
         bvehicule.keyframe_insert("rotation_euler", frame=f)
 
+        if f == 10:
+            vehicule.speed(80)
+        if f == 15:
+            vehicule.speed(70)
+        if f == 20:
+            vehicule.speed(30)
+        if f == 25:
+            vehicule.speed(100)
         if f == 50:
             vehicule.turn(80)
         if f == 100:
