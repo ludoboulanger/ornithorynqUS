@@ -225,19 +225,23 @@ class Vehicle:
 def simuler():
     # init conditions
     location = [0,0,0.025]
+    vehicle = Vehicle(location, 0)
+    
     # Timestamp
     print("Début de la simlation à ", datetime.now())
 
     # On vient placer le véhicule au début à 0,0,0
     b_vehicle = d.objects["Vehicle"]
     b_marble = d.objects['Marble']
-    bpy.context.scene.frame_set(0)
-    b_vehicle.location = location
-    b_vehicle.keyframe_insert(data_path="location", frame=0)
     b_vehicle.animation_data_clear()
     b_marble.animation_data_clear()
+    
+    bpy.context.scene.frame_set(0)
+    b_vehicle.location = location
+    b_marble.location = vehicle.get_marble_position()
+    b_vehicle.keyframe_insert(data_path="location", frame=0)
+    b_marble.keyframe_insert('location', frame=0)
 
-    vehicle = Vehicle(location, 0)
     vehicle.speed(100)
     vehicle.turn(90)
     #vehicule.turn(87)
