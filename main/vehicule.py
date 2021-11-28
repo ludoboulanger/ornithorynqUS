@@ -9,6 +9,82 @@ TIME = 1 / FRAMERATE
 TOTAL_FRAMES = 250 # nombre de frames à simuler
 DISTANCE_WHEELS = 0.14 # 14cm d'empattement
 
+ROTATION_RADIUS = 0.14
+CONTAINER_HEIGHT = 0.0085 # 10mm - 1.5mm concavity
+MARBLE_MASS = 0.0052
+MARBLE_R = 0.005
+G = 9.810
+DAMP = 1
+Z = np.sqrt(G / ROTATION_RADIUS)
+
+class Marble:
+
+    def __init__(self, x=0.0, y=0.0, z=0.0, accel=0.0, angle = 0.0):
+        self.x = x
+        self.y = y
+        self.z = z
+
+        self.alpha = np.array([accel*np.cos(angle), accel*np.sin(angle)])
+        self.omega = np.array([0,0])
+        self.theta = np.arcsin(np.array([x,y]) / ROTATION_RADIUS)
+
+        self.init_theta = self.theta
+        self.init_omega = self.omega
+
+        self.rel_time = 0
+
+    def get_cartesian_position(self):
+        return self.x, self.y, self.z
+
+    def set_cartesian_position(self):
+        linear_displacement = ROTATION_RADIUS * np.sin(self.theta)
+        self.x = linear_displacement[0]
+        self.y = linear_displacement[1] 
+        # self.z = MARBLE_R + CONTAINER_HEIGHT + ROTATION_RADIUS*(1 - cos(self.theta))
+        
+    def set_acceleration(self, accel, angle=0.0):
+        self.alpha = np.array([accel * np.cos(angle), accel * np.sin(angle)])
+        self.rel_time = TIME
+
+    def compute_theta(self):
+        damping_factor = np.exp(-DAMP * self.rel_time)
+
+        C = -self.alpha / ROTATION_RADIUS
+
+        A = self.init_theta - C / Z ** 2
+        B = self.init_omega / Z
+
+        pos = A * np.cos(Z * self.rel_time) + \
+              B * np.sin(Z * self.rel_time) + C / Z ** 2
+
+        return damping_factor * pos
+
+    def compute_omega(self):
+        damping_factor = np.exp(-DAMP * self.rel_time)
+
+        C = -self.alpha / ROTATION_RADIUS
+
+        A = self.init_theta - C / Z ** 2
+        B = self.init_omega / Z
+
+        pos = A * np.cos(Z * self.rel_time) + B * np.sin(Z * self.rel_time) + C / Z ** 2
+        vel = -A * np.sin(Z * self.rel_time) * Z + B * np.cos(Z * self.rel_time) * Z
+
+        return vel * damping_factor + -DAMP * damping_factor * pos
+
+    def simulate(self):
+        if self.rel_time == TIME:
+            print(self.omega)
+            print(self.theta)
+            self.init_omega = self.omega
+            self.init_theta = self.theta
+
+        self.theta = self.compute_theta()
+        self.omega = self.compute_omega()
+
+        self.set_cartesian_position()
+        self.rel_time += TIME
+
 
 class Vehicle:
 
@@ -23,6 +99,10 @@ class Vehicle:
     def __init__(self, coordinates, heading):
         self._coordinates = coordinates
         self._heading = heading
+        self._marble = Marble()
+
+    def get_marble_position(self):
+        return self._marble.get_cartesian_position()
 
     # Retourne le pourcentage nécessaire pour obtenir une certaine vitesse en m/s
     # À utiliser pour le vrai véhicule
@@ -101,6 +181,8 @@ class Vehicle:
     def update(self):
         # Calcul de l'accélération
         self._acceleration = self.acceleration(self._speed - self._prev_speed)
+        self._marble.set_acceleration(self._acceleration, angle=self._heading)
+
         print("Accélération à: ", self._acceleration)
 
         # Calcul du cap
@@ -134,7 +216,10 @@ class Vehicle:
             print("Erreur, état invalide")
 
         # On met à jour l'ancienne vitesse
-        self._vitesseprec = self._speed
+        self._prev_speed = self._speed
+
+        # Simule le mouvement de la bille
+        self._marble.simulate()
         return self._coordinates
 
 def simuler():
@@ -145,10 +230,12 @@ def simuler():
 
     # On vient placer le véhicule au début à 0,0,0
     b_vehicle = d.objects["Vehicle"]
+    b_marble = d.objects['Marble']
     bpy.context.scene.frame_set(0)
     b_vehicle.location = location
     b_vehicle.keyframe_insert(data_path="location", frame=0)
     b_vehicle.animation_data_clear()
+    b_marble.animation_data_clear()
 
     vehicle = Vehicle(location, 0)
     vehicle.speed(100)
@@ -166,23 +253,25 @@ def simuler():
         # On déplace le véhicule
         b_vehicle.location = vehicle.update()
         b_vehicle.rotation_euler.z = vehicle._heading
+        b_marble.location = vehicle.get_marble_position()
 
         # On ajout un keyframe
         b_vehicle.keyframe_insert(data_path="location", frame=f)
         b_vehicle.keyframe_insert("rotation_euler", frame=f)
+        b_marble.keyframe_insert('location', frame=f)
 
-        if f == 10:
-            vehicle.speed(80)
-        if f == 15:
-            vehicle.speed(70)
-        if f == 20:
-            vehicle.speed(30)
-        if f == 25:
-            vehicle.speed(100)
-        if f == 50:
-            vehicle.turn(80)
-        if f == 100:
-            vehicle.backward()
+        # if f == 10:
+        #     vehicle.speed(80)
+        # if f == 15:
+        #     vehicle.speed(70)
+        # if f == 20:
+        #     vehicle.speed(30)
+        # if f == 25:
+        #     vehicle.speed(100)
+        # if f == 50:
+        #     vehicle.turn(80)
+        # if f == 100:
+        #     vehicle.backward()
         #if f == 120:
         #    vehicule.speed(5)
         #if f == 200:
