@@ -95,6 +95,7 @@ class Vehicle:
     _wheel_angle = np.pi/2 # Angle des roues, 90 degrés est le centre
     _acceleration = 0 # Accélération du véhicule actuelle, en m/s2
     _state = 0 # État, 0 = stop, 1 = avancer, 2 = arrêté
+    is_turning = False
 
     def __init__(self, coordinates, heading):
         self._coordinates = coordinates
@@ -161,11 +162,13 @@ class Vehicle:
 
     # Tourner à un angle, en degrés. 90 est tout droit.
     def turn(self, angle):
+        self.is_turning = True
         if angle >= 0:
             self._wheel_angle = np.radians(90-angle)
 
     # Avancer
     def forward(self):
+        self.is_turning = False
         self._state = 1
 
     # Reculer
@@ -181,7 +184,8 @@ class Vehicle:
     def update(self):
         # Calcul de l'accélération
         self._acceleration = self.acceleration(self._speed - self._prev_speed)
-        self._marble.set_acceleration(self._acceleration, angle=self._heading)
+        car_acceleration = self._acceleration
+        acceleration_angle = self._heading
 
         print("Accélération à: ", self._acceleration)
 
@@ -189,15 +193,21 @@ class Vehicle:
         circon = np.abs(self.angle_to_radius(self._wheel_angle)) * 2 * np.pi
         print("Circonférence: ", circon)
         print("self._angleroues:", self._wheel_angle)
-        if circon > 0:
+        
+        # Virage
+        if circon > 0 and self.is_turning:
+            car_acceleration = 10 * self._speed**2 / np.abs(self.angle_to_radius(self._wheel_angle))
             if self._state == 1:
                 distanceframe = self._speed * TIME
             elif self._state == 2:
                 distanceframe = -1 * self._speed * TIME
+                
             if self._wheel_angle >= 0:
                 self._heading = self._heading - ((distanceframe/circon) * 2 * np.pi)
+                acceleration_angle = np.radians(self._heading - 90)
             else:
                 self._heading = (self._heading) + ((distanceframe/circon) * 2 * np.pi)
+                acceleration_angle = np.radians(self._heading + 90)
 
         print("Cap:", self._heading)
 
@@ -219,6 +229,7 @@ class Vehicle:
         self._prev_speed = self._speed
 
         # Simule le mouvement de la bille
+        self._marble.set_acceleration(car_acceleration, angle=acceleration_angle)
         self._marble.simulate()
         return self._coordinates
 
@@ -272,8 +283,8 @@ def simuler():
         #     vehicle.speed(30)
         # if f == 25:
         #     vehicle.speed(100)
-        # if f == 50:
-        #     vehicle.turn(80)
+        if f == 50:
+            vehicle.turn(80)
         # if f == 100:
         #     vehicle.backward()
         #if f == 120:
