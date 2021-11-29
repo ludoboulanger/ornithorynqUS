@@ -72,27 +72,33 @@ class DistanceSensor(object):
 
         return corrected_distance
 
-    def get_corrected_distance(self):
-        start_time = time.time()
-        time_elapsed = 0
-        max_time = 0.3
-        distances = []
-        distance_diff_threshold = 20  # 20 mm difference with previous distance is considered as aberrant value
-        while time_elapsed <= max_time:
-            current_time = time.time()
-            time_elapsed = current_time - start_time
+    def remove_aberrations(self, distances):
+        mean = np.mean(distances)
+        std = np.std(distances)
+        diff_arr = np.abs(distances - mean)
+        kept_distances_idx = diff_arr < std
+        ket_distances = distances[kept_distances_idx]
+        if self.log:
+            print(f'distance array without aberrations : {ket_distances}')
+        return ket_distances
+
+    def get_corrected_distance(self, mount=8):
+        distances = np.array([])
+        while len(distances) <= mount:
             distance = self.distance()
-            distance_count = len(distances)
-            if distance_count > 0:
-                prev_distance = distances[distance_count - 1]
-                if abs(prev_distance - distance) < distance_diff_threshold and distance > 0:
-                    distances.append(distance)
-            elif distance > 0 :
+            if distance > 0:
                 distances.append(distance)
             if self.log:
                 print(f'current distance:  {distance}')
                 print(f'distance array : {distances}')
-        return self.apply_linear_regression(np.mean(distances))
+
+        valid_distances = self.remove_aberrations(distances)
+        print(f'distance array without aberrations : {valid_distances}')
+
+        return self.apply_linear_regression(np.mean(valid_distances))
 
     def should_avoid(self, distance):
-        return distance <= self.avoid_distance
+        should_avoid = distance <= self.avoid_distance
+        if self.log:
+            print(f"should avoid ? : {should_avoid}")
+        return should_avoid
