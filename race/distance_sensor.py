@@ -75,7 +75,7 @@ class DistanceSensor(object):
     def get_corrected_distance(self):
         start_time = time.time()
         time_elapsed = 0
-        max_time = 0.1
+        max_time = 0.15
         distances = []
         distance_diff_threshold = 20  # 20 mm difference with previous distance is considered as aberrant value
         while time_elapsed <= max_time:
@@ -87,9 +87,13 @@ class DistanceSensor(object):
                 prev_distance = distances[distance_count - 1]
                 if (math.floor(prev_distance - distance)) < distance_diff_threshold:
                     distances.append(distance)
+            else :
+                distances.append(distance)
             if self.log:
                 print(f'current distance:  {distance}')
+                print(f'distance array : {distances}')
         return self.apply_linear_regression(np.mean(distances))
 
     def should_avoid(self, distance):
-        return distance >= self.avoid_distance
+        return distance <= self.avoid_distance
+
