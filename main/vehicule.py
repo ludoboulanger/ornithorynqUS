@@ -8,6 +8,8 @@ FRAMERATE = 30 # Framerate
 TIME = 1 / FRAMERATE
 TOTAL_FRAMES = 250 # nombre de frames à simuler
 DISTANCE_WHEELS = 0.14 # 14cm d'empattement
+ACCELERATIONFACTOR = 2.5
+DECELERATIONFACTOR = 2.5
 
 ROTATION_RADIUS = 0.14
 CONTAINER_HEIGHT = 0.0085 # 10mm - 1.5mm concavity
@@ -142,13 +144,13 @@ class Vehicle:
            return 0
 
        if diff_speed > 0: # Accélération
-           self._acceleration = -794.171873034486*np.power(diff_speed, 3)\
+           self._acceleration = ACCELERATIONFACTOR * (-794.171873034486*np.power(diff_speed, 3)\
                 + 281.9660606932039*np.power(diff_speed, 2)\
                 - 0.414200251036732*diff_speed\
-                - 0.6495715769694956
+                - 0.6495715769694956)
        elif diff_speed < 0: # Décélération, on assume l'inverse de l'accélération
            diff_speed = np.abs(diff_speed)
-           self._acceleration = -1*(-794.171873034486*np.power(diff_speed, 3)\
+           self._acceleration = -1 * DECELERATIONFACTOR *(-794.171873034486*np.power(diff_speed, 3)\
                 + 281.9660606932039*np.power(diff_speed, 2)
                 - 0.414200251036732*diff_speed\
                 - 0.6495715769694956)
