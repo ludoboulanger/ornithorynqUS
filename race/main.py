@@ -18,7 +18,7 @@ def race(timeout, log=False):
 
 
 if __name__ == '__main__':
-    log_main = False
+    log_main = True
     race_timeout = 10  # seconds
     race_time = race(timeout=race_timeout, log=log_main)
     if log_main:

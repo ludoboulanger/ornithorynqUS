@@ -82,7 +82,7 @@ class DistanceSensor(object):
             current_time = time.time()
             time_elapsed = current_time - start_time
             distance = self.get_distance()
-            distance_count = distances.length
+            distance_count = len(distances)
             if distance_count > 0:
                 prev_distance = distances[distance_count - 1]
                 if (math.floor(prev_distance - distance)) < distance_diff_threshold:
