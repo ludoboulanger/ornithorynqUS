@@ -13,7 +13,7 @@ LINE = "Plane"
 CAR = "Vehicle"
 MARBLE = "Marble"
 OBSTACLE= "Cube"
-FRAME_NUM = 1000
+FRAME_NUM = 3000
 FRAMERATE = 30 # Framerate
 TIME = 1 / FRAMERATE
 DISTANCE_WHEELS = 0.14 # 14cm d'empattement
@@ -30,7 +30,7 @@ CONTAINER_HEIGHT = 0.0085 # 10mm - 1.5mm concavity
 MARBLE_MASS = 0.0052
 MARBLE_R = 0.005
 G = 9.810
-DAMP = 1
+DAMP = 0.7
 Z = np.sqrt(G / ROTATION_RADIUS)
 
 VEHICLE_STATES = {
@@ -234,13 +234,29 @@ class Vehicle:
                 distanceframe = 0
                 
             if self._wheel_angle >= 0:
-                self._heading = self._heading - ((distanceframe/circon) * 2 * np.pi)
+                cap = self._heading - ((distanceframe/circon) * 2 * np.pi)
+
+                if cap <= 0:
+                    cap += 2*np.pi
+
+                self._heading = cap
+
                 acceleration_angle = self._heading - np.pi/2
+
             else:
-                self._heading = (self._heading) + ((distanceframe/circon) * 2 * np.pi)
+                cap = (self._heading) + ((distanceframe/circon) * 2 * np.pi)
+
+                if cap >= 2*np.pi:
+                    cap -= 2*np.pi
+
+                self._heading = cap
+
                 acceleration_angle = self._heading + np.pi/2
 
-        # print("Cap:", self._heading)
+            if cap >= np.pi/2 and cap <= 3*np.pi/2:
+                acceleration_angle *= -1
+
+        print("Cap:", self._heading)
 
         # Déplacement
         if self._state == VEHICLE_STATES['FORWARD']:
@@ -460,7 +476,7 @@ def main():
     get_around = False
     state = 0
     
-    frame_in_turn = DISTANCE_STOP/(car._speed / FRAMERATE)
+    frame_in_turn = DISTANCE_WHEELS/(car._speed / FRAMERATE)*1.1
     print(frame_in_turn)
     start_turn_frame = None
 
