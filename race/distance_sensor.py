@@ -87,7 +87,7 @@ class DistanceSensor(object):
         while len(distances) <= mount:
             distance = self.distance()
             if distance > 0:
-                np.append(distances, distance)
+                distances = np.append(distances, distance)
             if self.log:
                 print(f'current distance:  {distance}')
                 print(f'distance array : {distances}')
