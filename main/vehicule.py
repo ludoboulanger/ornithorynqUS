@@ -8,15 +8,16 @@ FRAMERATE = 30 # Framerate
 TIME = 1 / FRAMERATE
 TOTAL_FRAMES = 250 # nombre de frames à simuler
 DISTANCE_WHEELS = 0.14 # 14cm d'empattement
-ACCELERATIONFACTOR = 2.5
-DECELERATIONFACTOR = 2.5
+ACCELERATIONFACTOR = 3.5
+DECELERATIONFACTOR = 3.5
+TURN_ACCELERATION_FACTOR = 35
 
 ROTATION_RADIUS = 0.14
 CONTAINER_HEIGHT = 0.0085 # 10mm - 1.5mm concavity
 MARBLE_MASS = 0.0052
 MARBLE_R = 0.005
 G = 9.810
-DAMP = 1
+DAMP = 0.5
 Z = np.sqrt(G / ROTATION_RADIUS)
 
 VEHICLE_STATES = {
@@ -51,7 +52,7 @@ class Marble:
         # self.z = MARBLE_R + CONTAINER_HEIGHT + ROTATION_RADIUS*(1 - cos(self.theta))
         
     def set_acceleration(self, accel, angle=0.0):
-        print("Setting Acceleration :: ", accel)
+        print("Setting Acceleration :: ", accel, "Angle :: ", angle)
         self.alpha = np.array([accel * np.cos(angle), accel * np.sin(angle)])
         self.rel_time = TIME
 
@@ -199,7 +200,7 @@ class Vehicle:
         # Calcul de l'accélération
         self.update_acceleration(self._speed - self._prev_speed)
         car_acceleration = self._acceleration
-        acceleration_angle = self._heading
+        acceleration_angle = np.radians(self._heading)
 
         # print("Accélération à: ", self._acceleration)
 
@@ -210,7 +211,7 @@ class Vehicle:
         
         # Virage
         if circon > 0 and self._is_turning:
-            car_acceleration = 10 * self._speed**2 / np.abs(self.angle_to_radius(self._wheel_angle))
+            car_acceleration = TURN_ACCELERATION_FACTOR  * self._speed**2 / np.abs(self.angle_to_radius(self._wheel_angle))
             print("Angle :: ", self.angle_to_radius(self._wheel_angle))
             if self._state == 1:
                 distanceframe = self._speed * TIME
@@ -221,10 +222,10 @@ class Vehicle:
                 
             if self._wheel_angle >= 0:
                 self._heading = self._heading - ((distanceframe/circon) * 2 * np.pi)
-                acceleration_angle = np.radians(self._heading - 90)
+                acceleration_angle = self._heading - np.pi/2
             else:
                 self._heading = (self._heading) + ((distanceframe/circon) * 2 * np.pi)
-                acceleration_angle = np.radians(self._heading + 90)
+                acceleration_angle = self._heading + np.pi/2
 
         # print("Cap:", self._heading)
 
@@ -233,12 +234,13 @@ class Vehicle:
             self._coordinates[0] = self._coordinates[0] + (self._speed * TIME * np.cos(self._heading))
             self._coordinates[1] = self._coordinates[1] + (self._speed * TIME * np.sin(self._heading))
             # print("Avancer: ", self._coordinates)
-        elif self._state == 2:
+        elif self._state == VEHICLE_STATES['BACKWARD']:
             self._coordinates[0] = self._coordinates[0] + (self._speed * TIME * np.cos(self._heading + np.pi))
             self._coordinates[1] = self._coordinates[1] + (self._speed * TIME * np.sin(self._heading + np.pi))
             # print("Reculer: ", self._coordinates)
-        elif self._state == 0:
-            # car_acceleration = self._speed / TIME
+        elif self._state == VEHICLE_STATES['STOP']:
+            car_acceleration = -self._prev_speed / TIME
+            acceleration_angle = self._heading
             print("Stop: ", self._coordinates)
         else:
             print("Erreur, état invalide")
@@ -271,7 +273,7 @@ def simuler():
     b_vehicle.keyframe_insert(data_path="location", frame=0)
     b_marble.keyframe_insert('location', frame=0)
 
-    vehicle.speed(100)
+    vehicle.speed(50)
     vehicle.turn_straight()
     #vehicule.turn(87)
     vehicle.forward()
@@ -294,7 +296,9 @@ def simuler():
         b_marble.keyframe_insert('location', frame=f)
 
         if f == 40:
-            vehicle.turn(80)
+            vehicle.turn(75)
+        if f == 80:
+            vehicle.turn(100)
 #        if f == 15:
 #            vehicle.speed(70)
 #        if f == 20:
@@ -303,9 +307,11 @@ def simuler():
 #            vehicle.speed(100)
 #        if f == 30:
 #            vehicle.turn(80)
-        if f == 80:
+        if f == 180:
             vehicle.stop()
-#        if f == 120:
+#        if f == 100:
+#            vehicle.turn_straight()
+#            vehicle.forward()
 #            vehicle.speed(100)
         #if f == 200:
         #    vehicule.forward() 
