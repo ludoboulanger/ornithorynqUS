@@ -8,7 +8,10 @@ class LineFollower():
     def __init__(self):
         self.last_angle = 0
         self.lf = Line_Follower()
-        self.lf.references = np.load("references_lf.npy")
+        try:
+            self.lf.references = np.load("references_lf.npy")
+        except:
+            print("Could not find references_lf.npy")
 
     def lf_read_digital(self):
         return self.lf.read_digital()
@@ -36,11 +39,10 @@ class LineFollower():
     
     def calibrate(self, vehicle):
         references = [0, 0, 0, 0, 0]
-        print("cali for module:\n  first put all sensors on white, then put all sensors on black")
+        input("cali for module:\n  first put all sensors on white, then put all sensors on black")
         mount = 100
         vehicle.turn(70)
         print("\n cali white")
-        time.sleep(4)
         vehicle.turn(90)
         white_references = self.lf.get_average(mount)
         vehicle.turn(95)
@@ -51,8 +53,7 @@ class LineFollower():
         time.sleep(1)
 
         vehicle.turn(110)
-        print("\n cali black")
-        time.sleep(4)
+        input("\n cali black")
         vehicle.turn(90)
         black_references = self.lf.get_average(mount)
         vehicle.turn(95)
@@ -68,4 +69,3 @@ class LineFollower():
         print("Middle references =", references)
         time.sleep(1)
         np.save("references_lf.npy", references)
-
