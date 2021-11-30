@@ -2,14 +2,16 @@ import time
 from distance_sensor import DistanceSensor
 from line_follower import LineFollower
 from vehicle import vehicle
+from back_wheels import Back_Wheels
 from math import degrees
 
 
 def race(timeout, log=False, calibrate = False):
+    bw = Back_Wheels()
     vehicle = vehicle()
-    vehicle.forward()
+    bw.forward()
     vehicle.turn_straight()
-    vehicle.speed(20)
+    bw.speed(20)
     line_follower = LineFollower()
     start_time = time.time()
     time_elapsed = 0
@@ -29,7 +31,7 @@ def race(timeout, log=False, calibrate = False):
             print(f'Car racing, time elapsed : {time_elapsed}')
         angle = line_follower.get_angle_to_turn()
         vehicle.turn(degrees(angle)+90)
-    vehicle.speed(0)
+    bw.speed(0)
     return time_elapsed
 
 
