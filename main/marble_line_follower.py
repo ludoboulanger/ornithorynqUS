@@ -1,11 +1,10 @@
 import bpy
 import mathutils
-import math
 from statistics import mean
 from bpy import data as d
 from mathutils import Vector
-from math import radians, degrees, pi
 import numpy as np
+import datetime
 
 LF_SENSORS = ["Capteur.002", "Capteur.001", "Capteur", "Capteur.003", "Capteur.004"]
 SENSOR = d.objects["DistanceSensor"]
@@ -13,16 +12,16 @@ LINE = "Plane"
 CAR = "Vehicle"
 MARBLE = "Marble"
 OBSTACLE= "Cube"
-FRAME_NUM = 2000
+FRAME_NUM = 1000
 FRAMERATE = 30 # Framerate
 TIME = 1 / FRAMERATE
 DISTANCE_WHEELS = 0.14 # 14cm d'empattement
 DISTANCE_STOP=0.2 #200 mm
 TURN_ANGLE = 20
 
-ACCELERATIONFACTOR = 3.5
-DECELERATIONFACTOR = 3.5
-TURN_ACCELERATION_FACTOR = 35
+ACCELERATIONFACTOR = 2.5
+DECELERATIONFACTOR = 2.5
+TURN_ACCELERATION_FACTOR = 25
 
 # Constantes pour bille
 ROTATION_RADIUS = 0.14
@@ -284,76 +283,6 @@ class Vehicle:
         self._marble.simulate()
         return self._coordinates
 
-class DistanceSensor:
-
-    def __init__(self, vehicule, sensor, obstacle_prefix=OBSTACLE):
-        vehicule_location = vehicule.matrix_world.translation
-        self.vehicule = vehicule
-        self.location = sensor.matrix_world.translation
-        self.vector = self.location - vehicule_location
-        self.angle_threshold = ((30 + 40) / 2) / 2
-        self.obstacle_prefix = obstacle_prefix
-        self.sensor = sensor
-
-    def get_raw_distance(self, debug=False):
-        bpy.context.view_layer.update()
-        closest_obstacle_distance = None
-        closest_obstacle_name = None
-        self.location = self.sensor.matrix_world.translation
-        vehicule_location = self.vehicule.matrix_world.translation
-        self.vector = self.location - vehicule_location
-
-        if debug:
-            in_range = []
-            out_of_range = []
-
-        for obj in d.objects:
-            if obj.name.startswith(self.obstacle_prefix):
-                obstacle_vector = obj.location - self.location
-                osbtacle_sensor_angle = self.vector.angle(obstacle_vector) * 360 / (2 * pi)
-                if osbtacle_sensor_angle <= self.angle_threshold:
-                    obstacle_distance = (obj.location - self.location).length * 1000
-                    if closest_obstacle_distance is None or obstacle_distance < closest_obstacle_distance:
-                        closest_obstacle_distance = obstacle_distance
-                        closest_obstacle_name = obj.name
-                    if debug:
-                        in_range.append({
-                            "name": obj.name,
-                            "location": obj.location,
-                            "vector": obstacle_vector,
-                            "angle": osbtacle_sensor_angle,
-                            "distance": obstacle_distance
-                        })
-                elif debug:
-                    out_of_range.append({
-                        "name": obj.name,
-                        "location": obj.location,
-                        "vector": obstacle_vector,
-                        "angle": osbtacle_sensor_angle
-                    })
-        if debug:
-            print("------------------ In range objects ------------------")
-            for obj in in_range:
-                print(str(obj))
-
-            print("------------------ Out of range objects ------------------")
-            for obj in out_of_range:
-                print(str(obj))
-            print("----------------------------------------------------------")
-
-        return closest_obstacle_distance, closest_obstacle_name
-
-    def get_sim_distance(self, debug=False):
-        distance, name = self.get_raw_distance(debug=debug)
-        if distance is None or distance <= 0:
-            return distance
-        return self.apply_trendline(raw_distance=distance), name
-
-    # To do - change trendline values
-    def apply_trendline(self, raw_distance):
-        return 0.9207 * raw_distance - 34.295
-
-
 class LineFollower():
 
     def __init__(self, sensors_names, line_name):
@@ -364,7 +293,6 @@ class LineFollower():
     def is_sensor_over_line(self, sensor):
         bpy.context.view_layer.update()
         origin = sensor.matrix_world.translation
-        print("Sensor position : " + str(origin))
 
         ray_direction = mathutils.Vector((0, 0, -1))
 
@@ -386,77 +314,17 @@ class LineFollower():
     def get_angle_to_turn(self):
         angle = 0
         read = self.lf_read_digital()
-        print(read)
 
         if read == [0, 0, 0, 0, 0]:
             angle = self.last_angle
         else:
             angle = (2 - np.mean(np.nonzero(read))) * 90/3
         self.last_angle = angle
-        print("Angle: ", angle)
-        return math.radians(angle)
+ 
+        return np.radians(angle)
 
-
-def print_obstacle_distance(distance, name):
-    if distance is None or distance <= 0:
-        print("No obstacle found")
-    else:
-        print(name + " found at distance : " + str(distance) + " mm")
-
-
-def should_stop(distance):
-    distance_stop_mm = DISTANCE_STOP*1000
-    if distance is None or distance <= 0:
-        return False
-    elif distance <= distance_stop_mm:
-        return True
-    return False
-
-
-def init_car():
-    start_pos = [-0.2, 0, 0.025]
-    start_angle = (0, 0, math.pi / 18)
-
-    blender_car = bpy.data.objects.get(CAR)
-    blender_car.select_set(True)
-    blender_car.animation_data_clear()
-    blender_car.location = start_pos
-    blender_car.rotation_euler = start_angle
-
-    car = Vehicle(start_pos, 0)
-    car.speed(50)
-    # vehicule.turn(87)
-    car.turn_straight()
-    car.forward()
-
-    return car, blender_car
-
-def init_marble():
-    b_marble = d.objects['Marble']
-    b_marble.animation_data_clear()
-
-    return b_marble
-
-def get_around_obstacle(car, blender_car, distance_sensor, line_follower, key_frame):
-    car.turn(105)
-    distance_stop_mm = DISTANCE_STOP*1000
-    distance, _ = distance_sensor.get_raw_distance()
-    while distance is not None or distance<=distance_stop_mm:
-        animate_frame(key_frame, car, blender_car)
-        key_frame+=1
-        if(key_frame>FRAME_NUM):
-            break
-    car.turn(75)
-    while not line_follower.is_over_line():
-        animate_frame(key_frame, car, blender_car)
-        key_frame+=1
-        if(key_frame>FRAME_NUM):
-            break
-    return key_frame
-        
 
 def animate_frame(frame_num, car, blender_car, blender_marble):
-    print("FRAME :: ", frame_num)
     bpy.context.scene.frame_set(frame_num)
 
     # On déplace le véhicule
@@ -469,46 +337,67 @@ def animate_frame(frame_num, car, blender_car, blender_marble):
     blender_car.keyframe_insert("rotation_euler", frame=frame_num)
     blender_marble.keyframe_insert(data_path="location", frame=frame_num)
 
+def init_car():
+    start_pos = [-0.3, 0, 0.025]
+    start_angle = (0, 0, np.pi / 18)
+
+    blender_car = bpy.data.objects.get(CAR)
+    blender_car.select_set(True)
+    blender_car.animation_data_clear()
+    blender_car.location = start_pos
+    blender_car.rotation_euler = start_angle
+
+    car = Vehicle(start_pos, 0)
+    car.speed(40)
+    # vehicule.turn(87)
+    car.turn_straight()
+    car.forward()
+
+    return car, blender_car
+
+def init_marble():
+    b_marble = d.objects['Marble']
+    b_marble.animation_data_clear()
+
+    return b_marble
+
+def modif_speed(f, car):
+
+    if f == 40:
+        car.speed(80)
+    
+    if f == 160:
+        car.speed(30)
+
+    if f == 520:
+        car.speed(80)
+
+    if f == 580:
+        car.speed(30)
+    
+    if f == 850:
+        car.speed(70)
+
+
+
 
 def main():
     car, blender_car = init_car()
     blender_marble = init_marble()
-    distance_sensor = DistanceSensor(vehicule=blender_car, sensor=SENSOR)
     line_follower = LineFollower(sensors_names=LF_SENSORS, line_name=LINE)
-    get_around = False
-    state = 0
-    
-    frame_in_turn = DISTANCE_WHEELS/(car._speed / FRAMERATE)*1.1
-    print(frame_in_turn)
-    start_turn_frame = None
+
+    animate_frame(frame_num=0, car=car, blender_car=blender_car, blender_marble=blender_marble)
 
     for i in range(FRAME_NUM):
         print(f"***********FRAME_NUM: {i}******************")
-        print(f"***********get_around: {get_around}******************")
-        print(f"***********state: {state}******************")
-        print(f"***********frame_in_turn: {frame_in_turn}******************")
-        obstacle_distance, name = distance_sensor.get_raw_distance()
-        if should_stop(distance=obstacle_distance):
-            get_around= True
-        if get_around:
-            if state==0:
-                car.turn(90+TURN_ANGLE)
-                start_turn_frame = i
-                state=1
-            if state == 1:
-                if i-start_turn_frame>=frame_in_turn:
-                    state = 2
-            if state == 2:
-                car.turn(90-TURN_ANGLE)
-                if line_follower.is_over_line():
-                    get_around = False
-                    state=0
-        else:
-            angle = line_follower.get_angle_to_turn()
-            car.turn(degrees(angle)+90)
+        angle = line_follower.get_angle_to_turn()
+        print("LINE FOLLOWER :: ", np.degrees(angle)+90)
+        car.turn(np.degrees(angle)+90)
         animate_frame(frame_num=i, car=car, blender_car=blender_car, blender_marble=blender_marble)
 
+        modif_speed(i, car)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()
-    print("Done")
+    print("DONE")
