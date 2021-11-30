@@ -1,5 +1,5 @@
 '''
-**********************************************************************
+********************************************************************
 * Filename    : Ultrasonic_Avoidance.py
 * Description : A module for SunFounder Ultrasonic Avoidance
 * Author      : Cavon
@@ -7,7 +7,7 @@
 * E-mail      : service@sunfounder.com
 * Website     : www.sunfounder.com
 * Update      : Cavon    2016-09-26    New release
-**********************************************************************
+********************************************************************
 '''
 
 import RPi.GPIO as GPIO
@@ -19,7 +19,7 @@ import numpy as np
 class DistanceSensor(object):
     timeout = 0.05
 
-    def __init__(self, channel, avoid_distance=150, log=False):
+    def __init__(self, channel, avoid_distance=200, log=False):
         self.channel = channel
         self.log = log
         self.avoid_distance = avoid_distance
@@ -57,13 +57,6 @@ class DistanceSensor(object):
         else:
             return -1
 
-    #def get_distance(self, mount=5):
-    #    sum = 0
-    #    for i in range(mount):
-    #        a = self.distance()
-    #        sum += a
-    #    return int(sum / mount)
-
     def apply_linear_regression(self, distance):
         corrected_distance = 1.0038 * distance + 41.938
 
@@ -86,12 +79,11 @@ class DistanceSensor(object):
         distances = np.array([])
         while len(distances) <= mount:
             distance = self.distance()
-            if distance > 0:
+            if distance > 0 and not (74 <= distance <= 76):
                 distances = np.append(distances, distance)
             if self.log:
                 print(f'current distance:  {distance}')
                 print(f'distance array : {distances}')
-
         valid_distances = self.remove_aberrations(distances)
         print(f'distance array without aberrations : {valid_distances}')
 
