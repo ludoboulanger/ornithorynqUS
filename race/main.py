@@ -26,7 +26,6 @@ def race(timeout, log=False, calibrate=False):
     time_elapsed = 0
     is_race_over = False  # we should somehow get the information when we find the finish line (T shape)
     current_state = States.FOLLOW
-    avoid_distance = 150
 
 
     if calibrate:
@@ -37,7 +36,7 @@ def race(timeout, log=False, calibrate=False):
     while time_elapsed < timeout and not is_race_over:
         time_elapsed = time.time() - start_time
         closest_obstacle_distance = distance_sensor.get_corrected_distance()
-        if distance_sensor.should_avoid(avoid_distance):
+        if distance_sensor.should_avoid(closest_obstacle_distance):
             current_state = States.AVOID
             bw.speed(0, 0) # instead of stopping, we should avoid obstacle
             # call avoid function here or while loop ?
