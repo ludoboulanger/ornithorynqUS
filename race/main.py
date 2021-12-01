@@ -17,7 +17,7 @@ def race(timeout, log=False, calibrate=False):
     v = vehicle.Vehicle()
     v.forward()
     v.turn_straight()
-    v.speed(0)
+    v.stop()
     line_follower = LineFollower()
     distance_sensor = DistanceSensor(channel=20, log=log)
 
@@ -33,20 +33,22 @@ def race(timeout, log=False, calibrate=False):
     start_time = time.time()
     while time_elapsed < timeout and not is_race_over:
         time_elapsed = time.time() - start_time
-        closest_obstacle_distance = distance_sensor.get_corrected_distance()
+        '''closest_obstacle_distance = distance_sensor.get_corrected_distance()
         if distance_sensor.should_avoid(closest_obstacle_distance):
             current_state = States.AVOID
             v.stop()  # instead of stopping, we should avoid obstacle
             # call avoid function here or while loop ?
-            break  # remove when avoid is implemented
+            break  # remove when avoid is implemented'''
         is_race_over = line_follower.is_race_over()
         if log:
-            print(f'closest obstacle distance : {closest_obstacle_distance}')
+            # print(f'closest obstacle distance : {closest_obstacle_distance}')
             print(f'Car racing, time elapsed : {time_elapsed}')
-        # ce code ne ne semble plus bien fonctionner, a voir pourquoi
-        desired_angle = line_follower.get_angle_to_turn()
-        diff = desired_angle - v._wheel_angle
-        v.turn(degrees(v._wheel_angle + diff * 0.5)) #a confirmer si ca tourne comme faut
+        desired_angle = 90+line_follower.get_angle_to_turn()
+        current_angle = 90-degrees(v._wheel_angle)
+        diff = desired_angle - current_angle
+        print(f"Diff {diff} desired_angle {desired_angle} current_angle {current_angle}")
+        print(f"Turning with angle : {current_angle + diff * 0.5}")
+        v.turn(current_angle + diff*0.5 ) #a confirmer si ca tourne comme faut
     current_state = States.DONE
     v.stop()
     return time_elapsed
@@ -54,8 +56,8 @@ def race(timeout, log=False, calibrate=False):
 if __name__ == '__main__':
     calibrate = False
 
-    log_main = True
-    race_timeout = 60  # seconds
+    log_main = False
+    race_timeout = 30  # seconds
     race_time = race(timeout=race_timeout, log=log_main, calibrate=calibrate)
     if log_main:
         print(f'Race over, time elapsed : {race_time}, timeout exceeded? : {race_time > race_timeout}')

@@ -1,5 +1,4 @@
 import numpy as np
-import math
 from Line_Follower_Lib import Line_Follower
 import time
 
@@ -15,28 +14,30 @@ class LineFollower():
 
     def lf_read_digital(self):
         return self.lf.read_digital()
-    
+
     def is_over_line(self):
         if np.any(self.lf_read_digital()):
             return True
         else:
             return False
-    
+
     def is_race_over(self):
-        return np.count_nonzero(self.lf_read_digital)>=3
+        return np.count_nonzero(self.lf_read_digital()) >= 4
 
     def get_angle_to_turn(self):
         read = self.lf_read_digital()
         print(read)
 
         if read == [0, 0, 0, 0, 0]:
-            angle = self.last_angle
+            angle = np.sign(self.last_angle) * 45
         else:
-            angle = (2 - np.mean(np.nonzero(read))) * 90/3
+            angle = (2 - np.mean(np.nonzero(read))) * -45 / 2
+
         self.last_angle = angle
+
         print("Angle: ", angle)
-        return math.radians(angle)
-    
+        return angle
+
     def calibrate(self, vehicle):
         references = [0, 0, 0, 0, 0]
         input("cali for module:\n  first put all sensors on white, then put all sensors on black")
