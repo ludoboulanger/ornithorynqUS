@@ -30,7 +30,7 @@ class DistanceSensor(object):
         pulse_start = 0
         GPIO.setup(self.channel, GPIO.OUT)
         GPIO.output(self.channel, False)
-        time.sleep(0.01)
+        time.sleep(0.06)
         GPIO.output(self.channel, True)
         time.sleep(0.00001)
         GPIO.output(self.channel, False)
