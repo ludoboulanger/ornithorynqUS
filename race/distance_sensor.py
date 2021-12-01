@@ -30,7 +30,7 @@ class DistanceSensor(object):
         pulse_start = 0
         GPIO.setup(self.channel, GPIO.OUT)
         GPIO.output(self.channel, False)
-        time.sleep(0.06)
+        time.sleep(0.01)
         GPIO.output(self.channel, True)
         time.sleep(0.00001)
         GPIO.output(self.channel, False)
@@ -92,11 +92,11 @@ class DistanceSensor(object):
         return self.apply_linear_regression(mean_distance)
 
     def should_avoid(self, distance):
-        should_avoid = distance <= self.avoid_distance
+        should_avoid = distance <= (self.avoid_distance + 50) 
         if self.log:
             print(f"should avoid ? : {should_avoid}")
         return should_avoid
-
+    
     def calibrate(self):
         input("Appuyer sur une touche...")
         distance = self.calculate_mean_distance()
