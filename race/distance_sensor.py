@@ -75,7 +75,7 @@ class DistanceSensor(object):
             print(f'distance array without aberrations : {ket_distances}')
         return ket_distances
 
-    def get_corrected_distance(self, mount=8):
+    def calculate_mean_distance(self, mount=8):
         distances = np.array([])
         while len(distances) <= mount:
             distance = self.distance()
@@ -85,12 +85,19 @@ class DistanceSensor(object):
                 print(f'current distance:  {distance}')
                 print(f'distance array : {distances}')
         valid_distances = self.remove_aberrations(distances)
-        print(f'distance array without aberrations : {valid_distances}')
+        return np.mean(valid_distances)
 
-        return self.apply_linear_regression(np.mean(valid_distances))
+    def get_corrected_distance(self):
+        mean_distance = self.calculate_mean_distance()
+        return self.apply_linear_regression(mean_distance)
 
     def should_avoid(self, distance):
         should_avoid = distance <= self.avoid_distance
         if self.log:
             print(f"should avoid ? : {should_avoid}")
         return should_avoid
+
+    def calibrate(self):
+        input("Appuyer sur une touche...")
+        distance = self.calculate_mean_distance()
+        print(f"La distance mesurée est : {distance}")

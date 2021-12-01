@@ -53,7 +53,6 @@ def race(timeout, log=False, calibrate=False):
     bw.speed(0, 0)
     return time_elapsed
 
-
 if __name__ == '__main__':
     calibrate = False
 
