@@ -12,7 +12,7 @@ LINE = "Plane"
 CAR = "Vehicle"
 MARBLE = "Marble"
 OBSTACLE= "Cube"
-FRAME_NUM = 1000
+FRAME_NUM = 2000
 FRAMERATE = 30 # Framerate
 TIME = 1 / FRAMERATE
 DISTANCE_WHEELS = 0.14 # 14cm d'empattement
@@ -58,14 +58,18 @@ class Marble:
         return self.x, self.y, self.z
 
     def set_cartesian_position(self):
+        print(f"Theta {self.theta}")
         linear_displacement = ROTATION_RADIUS * np.sin(self.theta)
+        print(f"linear_displacement {linear_displacement}")
         self.x = linear_displacement[0]
         self.y = linear_displacement[1] 
         # self.z = MARBLE_R + CONTAINER_HEIGHT + ROTATION_RADIUS*(1 - cos(self.theta))
         
     def set_acceleration(self, accel, angle=0.0):
-        print("Setting Acceleration :: ", accel, "Angle :: ", angle)
         self.alpha = np.array([accel * np.cos(angle), accel * np.sin(angle)])
+        
+        print("Setting Acceleration :: ", self.alpha, "Angle :: ", angle)
+
         self.rel_time = TIME
 
     def compute_theta(self):
@@ -122,8 +126,17 @@ class Vehicle:
         self._heading = heading
         self._marble = Marble()
 
-    def get_marble_position(self):
-        return self._marble.get_cartesian_position()
+    def get_marble_position(self, heading):
+        
+        rotation_matrix = np.array([
+            [np.cos(heading), np.sin(heading), 0],
+            [-np.sin(heading), np.cos(heading), 0],
+            [0, 0, 1]
+        ])
+
+        coords = np.array(self._marble.get_cartesian_position())
+
+        return rotation_matrix @ coords
 
     # Retourne le pourcentage nécessaire pour obtenir une certaine vitesse en m/s
     # À utiliser pour le vrai véhicule
@@ -225,11 +238,11 @@ class Vehicle:
 
         # Calcul du cap
         circon = np.abs(self.angle_to_radius(self._wheel_angle)) * 2 * np.pi
-        # print("Circonférence: ", circon)
+        print("CIRCONFERENCE: ", circon)
         # print("self._angleroues:", self._wheel_angle)
         
         # Virage
-        if circon > 0 and self._is_turning:
+        if self._is_turning:
             car_acceleration = TURN_ACCELERATION_FACTOR  * self._speed**2 / np.abs(self.angle_to_radius(self._wheel_angle))
             if self._state == 1:
                 distanceframe = self._speed * TIME
@@ -237,7 +250,8 @@ class Vehicle:
                 distanceframe = -1 * self._speed * TIME
             else:
                 distanceframe = 0
-                
+            
+            print("WHEEL ANGLE :: ", self._wheel_angle)
             if self._wheel_angle >= 0:
                 self._heading -= ((distanceframe/circon) * 2 * np.pi)
 
@@ -254,10 +268,10 @@ class Vehicle:
 
                 acceleration_angle = self._heading + np.pi/2
 
-            if self._heading >= np.pi/2 and self._heading <= 3*np.pi/2:
-                acceleration_angle *= -1
+            # if self._heading > np.pi/2 and self._heading < 3*np.pi/2:
+            #     acceleration_angle *= -1
 
-        # print("Cap:", self._heading)
+        print("HEADING ::", self._heading)
 
         # Déplacement
         if self._state == VEHICLE_STATES['FORWARD']:
@@ -279,6 +293,9 @@ class Vehicle:
         self._prev_speed = self._speed
 
         # Simule le mouvement de la bille
+
+        if car_acceleration == 0:
+            acceleration_angle = 0
         self._marble.set_acceleration(car_acceleration, angle=acceleration_angle)
         self._marble.simulate()
         return self._coordinates
@@ -330,7 +347,7 @@ def animate_frame(frame_num, car, blender_car, blender_marble):
     # On déplace le véhicule
     blender_car.location = car.update()
     blender_car.rotation_euler.z = car._heading
-    blender_marble.location = car.get_marble_position()
+    blender_marble.location = car.get_marble_position(car._heading)
 
     # On ajout un keyframe
     blender_car.keyframe_insert(data_path="location", frame=frame_num)
@@ -348,7 +365,7 @@ def init_car():
     blender_car.rotation_euler = start_angle
 
     car = Vehicle(start_pos, 0)
-    car.speed(40)
+    car.speed(50)
     # vehicule.turn(87)
     car.turn_straight()
     car.forward()
@@ -389,13 +406,13 @@ def main():
     animate_frame(frame_num=0, car=car, blender_car=blender_car, blender_marble=blender_marble)
 
     for i in range(FRAME_NUM):
-        print(f"***********FRAME_NUM: {i}******************")
+        print(f"\n***********FRAME_NUM: {i}******************")
         angle = line_follower.get_angle_to_turn()
         print("LINE FOLLOWER :: ", np.degrees(angle)+90)
         car.turn(np.degrees(angle)+90)
         animate_frame(frame_num=i, car=car, blender_car=blender_car, blender_marble=blender_marble)
 
-        modif_speed(i, car)
+        # modif_speed(i, car)
 
 
 if __name__ == "__main__":
