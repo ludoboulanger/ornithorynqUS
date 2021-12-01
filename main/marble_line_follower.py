@@ -1,23 +1,35 @@
-import time
-from datetime import datetime
 import bpy
+import mathutils
+from statistics import mean
 from bpy import data as d
+from mathutils import Vector
 import numpy as np
+import datetime
 
+LF_SENSORS = ["Capteur.002", "Capteur.001", "Capteur", "Capteur.003", "Capteur.004"]
+SENSOR = d.objects["DistanceSensor"]
+LINE = "Plane"
+CAR = "Vehicle"
+MARBLE = "Marble"
+OBSTACLE= "Cube"
+FRAME_NUM = 1000
 FRAMERATE = 30 # Framerate
 TIME = 1 / FRAMERATE
-TOTAL_FRAMES = 250 # nombre de frames à simuler
 DISTANCE_WHEELS = 0.14 # 14cm d'empattement
-ACCELERATIONFACTOR = 3.5
-DECELERATIONFACTOR = 3.5
-TURN_ACCELERATION_FACTOR = 35
+DISTANCE_STOP=0.2 #200 mm
+TURN_ANGLE = 20
 
+ACCELERATIONFACTOR = 2.5
+DECELERATIONFACTOR = 2.5
+TURN_ACCELERATION_FACTOR = 25
+
+# Constantes pour bille
 ROTATION_RADIUS = 0.14
 CONTAINER_HEIGHT = 0.0085 # 10mm - 1.5mm concavity
 MARBLE_MASS = 0.0052
 MARBLE_R = 0.005
 G = 9.810
-DAMP = 0.5
+DAMP = 0.7
 Z = np.sqrt(G / ROTATION_RADIUS)
 
 VEHICLE_STATES = {
@@ -160,6 +172,7 @@ class Vehicle:
 
     # Ajuste la vitesse du robot, équivalent à la librairie du robot
     def speed(self, percent):
+        self._is_turning = False
         if percent < 0:
             self._speed = 0
             return
@@ -176,6 +189,12 @@ class Vehicle:
 
     # Tourner à un angle, en degrés. 90 est tout droit.
     def turn(self, angle):
+        # LineFollower call toujours turn, donc on check si il
+        # dit daller tout droit ou non
+        if angle == 90:
+            self.turn_straight()
+            return
+        
         self._is_turning = True
         if angle >= 0:
             self._wheel_angle = np.radians(90-angle)
@@ -212,7 +231,6 @@ class Vehicle:
         # Virage
         if circon > 0 and self._is_turning:
             car_acceleration = TURN_ACCELERATION_FACTOR  * self._speed**2 / np.abs(self.angle_to_radius(self._wheel_angle))
-            print("Angle :: ", self.angle_to_radius(self._wheel_angle))
             if self._state == 1:
                 distanceframe = self._speed * TIME
             elif self._state == 2:
@@ -221,11 +239,23 @@ class Vehicle:
                 distanceframe = 0
                 
             if self._wheel_angle >= 0:
-                self._heading = self._heading - ((distanceframe/circon) * 2 * np.pi)
+                self._heading -= ((distanceframe/circon) * 2 * np.pi)
+
+                if self._heading <= 0:
+                    self._heading += 2*np.pi
+
                 acceleration_angle = self._heading - np.pi/2
+
             else:
-                self._heading = (self._heading) + ((distanceframe/circon) * 2 * np.pi)
+                self._heading += ((distanceframe/circon) * 2 * np.pi)
+
+                if self._heading >= 2*np.pi:
+                    self._heading -= 2*np.pi
+
                 acceleration_angle = self._heading + np.pi/2
+
+            if self._heading >= np.pi/2 and self._heading <= 3*np.pi/2:
+                acceleration_angle *= -1
 
         # print("Cap:", self._heading)
 
@@ -253,69 +283,121 @@ class Vehicle:
         self._marble.simulate()
         return self._coordinates
 
-def simuler():
-    # init conditions
-    location = [0,0,0.025]
-    vehicle = Vehicle(location, 0)
-    
-    # Timestamp
-    print("Début de la simlation à ", datetime.now())
+class LineFollower():
 
-    # On vient placer le véhicule au début à 0,0,0
-    b_vehicle = d.objects["Vehicle"]
+    def __init__(self, sensors_names, line_name):
+        self.last_angle = 0
+        self.sensors = [bpy.data.objects.get(sensor) for sensor in sensors_names]
+        self.line = bpy.data.objects.get(line_name)
+
+    def is_sensor_over_line(self, sensor):
+        bpy.context.view_layer.update()
+        origin = sensor.matrix_world.translation
+
+        ray_direction = mathutils.Vector((0, 0, -1))
+
+        ray_begin_local = self.line.matrix_world.inverted() @ origin
+
+        result, loc, normal, face_idx = self.line.ray_cast(ray_begin_local, ray_direction)
+
+        return result
+
+    def lf_read_digital(self):
+        return [int(self.is_sensor_over_line(sensor)) for sensor in self.sensors]
+    
+    def is_over_line(self):
+        for sensor in self.sensors:
+            if self.is_sensor_over_line(sensor):
+                return True
+        return False
+
+    def get_angle_to_turn(self):
+        angle = 0
+        read = self.lf_read_digital()
+
+        if read == [0, 0, 0, 0, 0]:
+            angle = self.last_angle
+        else:
+            angle = (2 - np.mean(np.nonzero(read))) * 90/3
+        self.last_angle = angle
+ 
+        return np.radians(angle)
+
+
+def animate_frame(frame_num, car, blender_car, blender_marble):
+    bpy.context.scene.frame_set(frame_num)
+
+    # On déplace le véhicule
+    blender_car.location = car.update()
+    blender_car.rotation_euler.z = car._heading
+    blender_marble.location = car.get_marble_position()
+
+    # On ajout un keyframe
+    blender_car.keyframe_insert(data_path="location", frame=frame_num)
+    blender_car.keyframe_insert("rotation_euler", frame=frame_num)
+    blender_marble.keyframe_insert(data_path="location", frame=frame_num)
+
+def init_car():
+    start_pos = [-0.3, 0, 0.025]
+    start_angle = (0, 0, np.pi / 18)
+
+    blender_car = bpy.data.objects.get(CAR)
+    blender_car.select_set(True)
+    blender_car.animation_data_clear()
+    blender_car.location = start_pos
+    blender_car.rotation_euler = start_angle
+
+    car = Vehicle(start_pos, 0)
+    car.speed(40)
+    # vehicule.turn(87)
+    car.turn_straight()
+    car.forward()
+
+    return car, blender_car
+
+def init_marble():
     b_marble = d.objects['Marble']
-    b_vehicle.animation_data_clear()
     b_marble.animation_data_clear()
+
+    return b_marble
+
+def modif_speed(f, car):
+
+    if f == 40:
+        car.speed(80)
     
-    bpy.context.scene.frame_set(0)
-    b_vehicle.location = location
-    b_marble.location = vehicle.get_marble_position()
-    b_vehicle.keyframe_insert(data_path="location", frame=0)
-    b_marble.keyframe_insert('location', frame=0)
+    if f == 160:
+        car.speed(30)
 
-    vehicle.speed(50)
-    vehicle.turn_straight()
-    #vehicule.turn(87)
-    vehicle.forward()
+    if f == 520:
+        car.speed(80)
+
+    if f == 580:
+        car.speed(30)
+    
+    if f == 850:
+        car.speed(70)
 
 
-    frames = range(1, TOTAL_FRAMES)
-    for f in frames:
-        print("Image :", f)
-        # On vient lire le frame actuel
-        bpy.context.scene.frame_set(f)
 
-        # On déplace le véhicule
-        b_vehicle.location = vehicle.update()
-        b_vehicle.rotation_euler.z = vehicle._heading
-        b_marble.location = vehicle.get_marble_position()
 
-        # On ajout un keyframe
-        b_vehicle.keyframe_insert(data_path="location", frame=f)
-        b_vehicle.keyframe_insert("rotation_euler", frame=f)
-        b_marble.keyframe_insert('location', frame=f)
+def main():
+    car, blender_car = init_car()
+    blender_marble = init_marble()
+    line_follower = LineFollower(sensors_names=LF_SENSORS, line_name=LINE)
 
-        if f == 40:
-            vehicle.turn(75)
-        if f == 80:
-            vehicle.turn(100)
-#        if f == 15:
-#            vehicle.speed(70)
-#        if f == 20:
-#            vehicle.speed(30)
-#        if f == 25:
-#            vehicle.speed(100)
-#        if f == 30:
-#            vehicle.turn(80)
-        if f == 180:
-            vehicle.stop()
-#        if f == 100:
-#            vehicle.turn_straight()
-#            vehicle.forward()
-#            vehicle.speed(100)
-        #if f == 200:
-        #    vehicule.forward() 
+    animate_frame(frame_num=0, car=car, blender_car=blender_car, blender_marble=blender_marble)
+
+    for i in range(FRAME_NUM):
+        print(f"***********FRAME_NUM: {i}******************")
+        angle = line_follower.get_angle_to_turn()
+        print("LINE FOLLOWER :: ", np.degrees(angle)+90)
+        car.turn(np.degrees(angle)+90)
+        animate_frame(frame_num=i, car=car, blender_car=blender_car, blender_marble=blender_marble)
+
+        modif_speed(i, car)
 
 
 if __name__ == "__main__":
-    simuler()
+    main()
+    print("DONE")
