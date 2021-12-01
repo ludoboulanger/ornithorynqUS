@@ -35,7 +35,7 @@ class LineFollower():
             angle = (2 - np.mean(np.nonzero(read))) * 90/3
         self.last_angle = angle
         print("Angle: ", angle)
-        return math.radians(angle)
+        return angle
     
     def calibrate(self, vehicle):
         references = [0, 0, 0, 0, 0]
