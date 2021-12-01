@@ -19,7 +19,7 @@ import numpy as np
 class DistanceSensor(object):
     timeout = 0.05
 
-    def __init__(self, channel, avoid_distance=200, log=False):
+    def __init__(self, channel=20, avoid_distance=200, log=False):
         self.channel = channel
         self.log = log
         self.avoid_distance = avoid_distance

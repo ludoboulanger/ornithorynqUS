@@ -21,7 +21,7 @@ def race(timeout, log=False, calibrate=False):
     v.turn_straight()
     bw.speed(0, 0)
     line_follower = LineFollower()
-    distance_sensor = DistanceSensor(channel=20, log=log)
+    distance_sensor = DistanceSensor(channel=20, log=log) 
 
     # Init variables
     time_elapsed = 0
