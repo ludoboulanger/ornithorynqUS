@@ -4,6 +4,7 @@ from line_follower import LineFollower
 from picar import vehicle
 from math import degrees
 from enum import Enum
+import asyncio
 
 
 class States(Enum):
@@ -19,9 +20,9 @@ def race(timeout, log=False, calibrate=False):
     v.turn_straight()
     v.stop()
     line_follower = LineFollower()
-    distance_sensor = DistanceSensor(channel=16, avoid_distance=100, log=log)
+    distance_sensor = DistanceSensor(channel=5, avoid_distance=100, log=log)
     cruise_speed = 80;
-    slow_speed = 50;
+    slow_speed = 40;
 
     # Init variables
     time_elapsed = 0
@@ -35,35 +36,37 @@ def race(timeout, log=False, calibrate=False):
     start_time = time.time()
     count = 0
     while time_elapsed < timeout and not is_race_over:
-        #count+=1
+        # count+=1
         time_elapsed = time.time() - start_time
-        '''closest_obstacle_distance = distance_sensor.get_corrected_distance()
-        if distance_sensor.should_slow_down(closest_obstacle_distance):
-            v.speed(slow_speed)
-        if distance_sensor.should_avoid(closest_obstacle_distance):
-            current_state = States.AVOID
-            v.stop()  # instead of stopping, we should avoid obstacle
-            # call avoid function here or while loop 
-            break  # remove when avoid is implemented
-            '''
+        closest_obstacle_distance = distance_sensor.get_corrected_distance()
+        if closest_obstacle_distance > 0:
+            if distance_sensor.should_slow_down(closest_obstacle_distance):
+                v.speed(slow_speed)
+            if distance_sensor.should_avoid(closest_obstacle_distance):
+                current_state = States.AVOID
+                v.stop()  # instead of stopping, we should avoid obstacle
+                # call avoid function here or while loop
+                break  # remove when avoid is implemented
+
         is_race_over = line_follower.is_race_over()
-        if log:
-            print(f'closest obstacle distance : {closest_obstacle_distance}')
-            print(f'Car racing, time elapsed : {time_elapsed}')
-        desired_angle = 90+line_follower.get_angle_to_turn()
-        current_angle = 90-degrees(v._wheel_angle)
+        # if log:
+        # print(f'closest obstacle distance : {closest_obstacle_distance}')
+        # print(f'Car racing, time elapsed : {time_elapsed}')
+        desired_angle = 90 + line_follower.get_angle_to_turn()
+        current_angle = 90 - degrees(v._wheel_angle)
         diff = desired_angle - current_angle
-        print(f"Diff {diff} desired_angle {desired_angle} current_angle {current_angle}")
-        print(f"Turning with angle : {current_angle + diff * 0.5}")
-        v.turn(current_angle + diff*0.5 )
+        # print(f"Diff {diff} desired_angle {desired_angle} current_angle {current_angle}")
+        # print(f"Turning with angle : {current_angle + diff * 0.5}")
+        v.turn(current_angle + diff * 0.5)
     current_state = States.DONE
     v.stop()
-    #print(count)
+    # print(count)
     return time_elapsed
+
 
 if __name__ == '__main__':
     calibrate = False
-    log_main = False
+    log_main = True
     race_timeout = 80  # seconds
     race_time = race(timeout=race_timeout, log=log_main, calibrate=calibrate)
     if log_main:

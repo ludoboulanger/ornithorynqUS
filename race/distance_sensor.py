@@ -1,5 +1,5 @@
 '''
-******************************************************************
+****************************************************************
 * Filename    : Ultrasonic_Avoidance.py
 * Description : A module for SunFounder Ultrasonic Avoidance
 * Author      : Cavon
@@ -7,7 +7,7 @@
 * E-mail      : service@sunfounder.com
 * Website     : www.sunfounder.com
 * Update      : Cavon    2016-09-26    New release
-******************************************************************
+****************************************************************
 '''
 
 import RPi.GPIO as GPIO
@@ -20,11 +20,12 @@ class DistanceSensor(object):
     timeout = 0.05
 
     # avoid distance and slow down distance should go in flash mcqueen class
-    def __init__(self, channel, avoid_distance=100, slow_down_diff=100, log=False):
+    def __init__(self, channel, avoid_distance=100, slow_down_diff=200, log=False):
         self.channel = channel
         self.log = log
         self.avoid_distance = avoid_distance
         self.slow_down_distance = avoid_distance + slow_down_diff
+        self.seen_distances = np.array([])
         GPIO.setmode(GPIO.BCM)
 
     def distance(self):
@@ -78,24 +79,28 @@ class DistanceSensor(object):
         return ket_distances
 
     def calculate_mean_distance(self, mount=8):
-        distances = np.array([])
-        while len(distances) <= mount:
-            distance = self.distance()
-            if distance > 0 and not (74 <= distance <= 76):
-                distances = np.append(distances, distance)
-            if self.log:
-                print(f'current distance:  {distance}')
-                print(f'distance array : {distances}')
-        valid_distances = self.remove_aberrations(distances)
+        distance = self.distance()
+        if distance > 0 and not (74 <= distance <= 76):
+            self.seen_distances = np.append(self.seen_distances, distance)
+        if self.log:
+            print(f'current distance:  {distance}')
+            print(f'distance array : {self.seen_distances}')
+        if len(self.seen_distances) < mount:
+            return -1
+        valid_distances = self.remove_aberrations(self.seen_distances)
+        self.seen_distances = np.array([])
+        #self.seen_distances = np.array(self.seen_distances[1:])
         return np.mean(valid_distances)
 
     def get_corrected_distance(self):
         mean_distance = self.calculate_mean_distance()
+        if mean_distance < 0 :
+            return -1
         return self.apply_linear_regression(mean_distance)
 
     # This method should be refactored to be in Flash mcQueen class
     def should_avoid(self, distance):
-        should_avoid = distance <= self.avoid_distance # + some distance for safety
+        should_avoid = distance <= (self.avoid_distance + 42)
         if self.log:
             print(f"should avoid ? : {should_avoid}")
         return should_avoid
@@ -109,5 +114,8 @@ class DistanceSensor(object):
 
     def calibrate(self):
         input("Appuyer sur une touche...")
+        start_time = time.time()
         distance = self.calculate_mean_distance()
+        end_time = time.time()
         print(f"La distance mesurée est : {distance}")
+        print(f"temps requis : {end_time - start_time}")
