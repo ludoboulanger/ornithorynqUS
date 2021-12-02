@@ -20,6 +20,8 @@ def race(timeout, log=False, calibrate=False):
     v.stop()
     line_follower = LineFollower()
     distance_sensor = DistanceSensor(channel=16, avoid_distance=100, log=log)
+    cruise_speed = 80;
+    slow_speed = 50;
 
     # Init variables
     time_elapsed = 0
@@ -29,11 +31,13 @@ def race(timeout, log=False, calibrate=False):
     if calibrate:
         line_follower.calibrate(v)
     input("Ready...set...")
-    v.speed(80)
+    v.speed(cruise_speed)
     start_time = time.time()
     while time_elapsed < timeout and not is_race_over:
         time_elapsed = time.time() - start_time
         closest_obstacle_distance = distance_sensor.get_corrected_distance()
+        if distance_sensor.should_slow_down(closest_obstacle_distance):
+            v.speed(slow_speed)
         if distance_sensor.should_avoid(closest_obstacle_distance):
             current_state = States.AVOID
             v.stop()  # instead of stopping, we should avoid obstacle

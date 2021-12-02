@@ -19,10 +19,12 @@ import numpy as np
 class DistanceSensor(object):
     timeout = 0.05
 
-    def __init__(self, channel, avoid_distance=200, log=False):
+    # avoid distance and slow down distance should go in flash mcqueen class
+    def __init__(self, channel, avoid_distance=100, slow_down_diff=100, log=False):
         self.channel = channel
         self.log = log
         self.avoid_distance = avoid_distance
+        self.slow_down_distance = avoid_distance + slow_down_diff
         GPIO.setmode(GPIO.BCM)
 
     def distance(self):
@@ -91,11 +93,19 @@ class DistanceSensor(object):
         mean_distance = self.calculate_mean_distance()
         return self.apply_linear_regression(mean_distance)
 
+    # This method should be refactored to be in Flash mcQueen class
     def should_avoid(self, distance):
-        should_avoid = distance <= (self.avoid_distance + 50) 
+        should_avoid = distance <= self.avoid_distance # + some distance for safety
         if self.log:
             print(f"should avoid ? : {should_avoid}")
         return should_avoid
+
+    # This method should be refactored to be in Flash mcQueen class
+    def should_slow_down(self, distance):
+        should_slow_down = distance <= self.slow_down_distance
+        if self.log:
+            print(f"should slow down ? : {should_slow_down}")
+        return should_slow_down
     
     def calibrate(self):
         input("Appuyer sur une touche...")
