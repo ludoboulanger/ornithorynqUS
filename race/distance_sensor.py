@@ -1,5 +1,5 @@
 '''
-********************************************************************
+******************************************************************
 * Filename    : Ultrasonic_Avoidance.py
 * Description : A module for SunFounder Ultrasonic Avoidance
 * Author      : Cavon
@@ -7,7 +7,7 @@
 * E-mail      : service@sunfounder.com
 * Website     : www.sunfounder.com
 * Update      : Cavon    2016-09-26    New release
-********************************************************************
+******************************************************************
 '''
 
 import RPi.GPIO as GPIO
@@ -106,7 +106,7 @@ class DistanceSensor(object):
         if self.log:
             print(f"should slow down ? : {should_slow_down}")
         return should_slow_down
-    
+
     def calibrate(self):
         input("Appuyer sur une touche...")
         distance = self.calculate_mean_distance()

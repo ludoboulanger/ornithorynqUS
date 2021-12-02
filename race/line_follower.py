@@ -7,6 +7,7 @@ class LineFollower():
     def __init__(self):
         self.last_angle = 0
         self.lf = Line_Follower()
+        self.count_zeros=0
         try:
             self.lf.references = np.load("references_lf.npy")
         except:
@@ -29,8 +30,13 @@ class LineFollower():
         print(read)
 
         if read == [0, 0, 0, 0, 0]:
-            angle = np.sign(self.last_angle) * 45
+            self.count_zeros += 1
+            if self.count_zeros>=60:
+                angle = np.sign(self.last_angle) * 45
+            else:
+                angle = self.last_angle
         else:
+            self.count_zeros = 0
             angle = (2 - np.mean(np.nonzero(read))) * -45 / 2
 
         self.last_angle = angle
