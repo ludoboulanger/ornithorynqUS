@@ -6,7 +6,7 @@ from bpy import data as d
 from mathutils import Vector
 from math import radians, degrees, pi
 import numpy as np
-
+from enum import Enum
 LF_SENSORS = ["Capteur.002", "Capteur.001", "Capteur", "Capteur.003", "Capteur.004"]
 SENSOR = d.objects["DistanceSensor"]
 LINE = "Plane"
@@ -17,8 +17,9 @@ FRAME_NUM = 2000
 FRAMERATE = 30 # Framerate
 TIME = 1 / FRAMERATE
 DISTANCE_WHEELS = 0.14 # 14cm d'empattement
-DISTANCE_STOP=0.2 #200 mm
-TURN_ANGLE = 20
+DISTANCE_STOP=0.1 #200 mm
+TURN_ANGLE = 15
+FIND_LINE_ANGLE = 30
 
 ACCELERATIONFACTOR = 2.5
 DECELERATIONFACTOR = 2.5
@@ -389,9 +390,9 @@ class LineFollower():
         print(read)
 
         if read == [0, 0, 0, 0, 0]:
-            angle = self.last_angle
+            angle = np.sign(self.last_angle)*45
         else:
-            angle = (2 - np.mean(np.nonzero(read))) * 90/3
+            angle = (2 - np.mean(np.nonzero(read))) * 45/2
         self.last_angle = angle
         print("Angle: ", angle)
         return math.radians(angle)
@@ -406,11 +407,11 @@ def print_obstacle_distance(distance, name):
 
 def should_stop(distance):
     distance_stop_mm = DISTANCE_STOP*1000
-    if distance is None or distance <= 0:
+    if distance is None or distance <= 0 or  distance > distance_stop_mm:
         return False
-    elif distance <= distance_stop_mm:
+    else:
         return True
-    return False
+
 
 
 def init_car():
@@ -436,25 +437,7 @@ def init_marble():
     b_marble.animation_data_clear()
 
     return b_marble
-
-def get_around_obstacle(car, blender_car, distance_sensor, line_follower, key_frame):
-    car.turn(105)
-    distance_stop_mm = DISTANCE_STOP*1000
-    distance, _ = distance_sensor.get_raw_distance()
-    while distance is not None or distance<=distance_stop_mm:
-        animate_frame(key_frame, car, blender_car)
-        key_frame+=1
-        if(key_frame>FRAME_NUM):
-            break
-    car.turn(75)
-    while not line_follower.is_over_line():
-        animate_frame(key_frame, car, blender_car)
-        key_frame+=1
-        if(key_frame>FRAME_NUM):
-            break
-    return key_frame
         
-
 def animate_frame(frame_num, car, blender_car, blender_marble):
     print("FRAME :: ", frame_num)
     bpy.context.scene.frame_set(frame_num)
@@ -469,6 +452,14 @@ def animate_frame(frame_num, car, blender_car, blender_marble):
     blender_car.keyframe_insert("rotation_euler", frame=frame_num)
     blender_marble.keyframe_insert(data_path="location", frame=frame_num)
 
+class State(Enum):
+    OBSTACLE_APPROACHING = 1
+    OBSTACLE_WAITING = 2
+    OBSTACLE_BACKWARD = 3
+    OBSTACLE_TURN = 4
+    OBSTACLE_FIND_LINE = 5
+    FOLLOW_LINE = 6
+
 
 def main():
     car, blender_car = init_car()
@@ -476,36 +467,49 @@ def main():
     distance_sensor = DistanceSensor(vehicule=blender_car, sensor=SENSOR)
     line_follower = LineFollower(sensors_names=LF_SENSORS, line_name=LINE)
     get_around = False
-    state = 0
-    
-    frame_in_turn = DISTANCE_WHEELS/(car._speed / FRAMERATE)*1.1
-    print(frame_in_turn)
+    state = State.FOLLOW_LINE
+    start_waiting_frame = 0
+    WAITING_SEC = 5
+    WAITING_FRAME_NUM = WAITING_SEC * FRAMERATE
+
     start_turn_frame = None
 
     for i in range(FRAME_NUM):
         print(f"***********FRAME_NUM: {i}******************")
         print(f"***********get_around: {get_around}******************")
         print(f"***********state: {state}******************")
-        print(f"***********frame_in_turn: {frame_in_turn}******************")
-        obstacle_distance, name = distance_sensor.get_raw_distance()
-        if should_stop(distance=obstacle_distance):
-            get_around= True
-        if get_around:
-            if state==0:
-                car.turn(90+TURN_ANGLE)
+        #print(f"***********frame_in_turn: {frame_in_turn}******************")
+        obstacle_distance, _ = distance_sensor.get_raw_distance()
+        if(state == State.FOLLOW_LINE):
+            if should_stop(distance=obstacle_distance):
+                state= State.OBSTACLE_WAITING
+                start_waiting_frame = i
+            else:
+                angle = line_follower.get_angle_to_turn()
+                car.turn(degrees(angle)+90)
+        elif(state == State.OBSTACLE_WAITING):
+            car.stop()
+            if i - start_waiting_frame > WAITING_FRAME_NUM:
+                state = State.OBSTACLE_BACKWARD
+        elif(state == State.OBSTACLE_BACKWARD):
+            car.backward()
+            car.turn_straight()
+            car.speed(10)
+            if obstacle_distance is None or obstacle_distance >= 300:
+                state = State.OBSTACLE_TURN
                 start_turn_frame = i
-                state=1
-            if state == 1:
-                if i-start_turn_frame>=frame_in_turn:
-                    state = 2
-            if state == 2:
-                car.turn(90-TURN_ANGLE)
+        elif(state == State.OBSTACLE_TURN):
+                frame_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(car._speed / FRAMERATE)        
+                car.forward()   
+                car.speed(50)   
+                car.turn(90+TURN_ANGLE) 
+                if i-start_turn_frame>=frame_in_turn:  
+                    state = State.OBSTACLE_FIND_LINE    
+        elif(state == State.OBSTACLE_FIND_LINE):
+                car.turn(90-FIND_LINE_ANGLE)
                 if line_follower.is_over_line():
-                    get_around = False
-                    state=0
-        else:
-            angle = line_follower.get_angle_to_turn()
-            car.turn(degrees(angle)+90)
+                    state= State.FOLLOW_LINE
+            
         animate_frame(frame_num=i, car=car, blender_car=blender_car, blender_marble=blender_marble)
 
 
