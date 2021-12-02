@@ -12,16 +12,16 @@ LINE = "Plane"
 CAR = "Vehicle"
 MARBLE = "Marble"
 OBSTACLE= "Cube"
-FRAME_NUM = 2000
+FRAME_NUM = 1000
 FRAMERATE = 30 # Framerate
 TIME = 1 / FRAMERATE
 DISTANCE_WHEELS = 0.14 # 14cm d'empattement
 DISTANCE_STOP=0.2 #200 mm
 TURN_ANGLE = 20
 
-ACCELERATIONFACTOR = 2.5
+ACCELERATIONFACTOR = 1.8
 DECELERATIONFACTOR = 2.5
-TURN_ACCELERATION_FACTOR = 25
+TURN_ACCELERATION_FACTOR = 5
 
 # Constantes pour bille
 ROTATION_RADIUS = 0.14
@@ -29,7 +29,7 @@ CONTAINER_HEIGHT = 0.0085 # 10mm - 1.5mm concavity
 MARBLE_MASS = 0.0052
 MARBLE_R = 0.005
 G = 9.810
-DAMP = 0.7
+DAMP = 0.5
 Z = np.sqrt(G / ROTATION_RADIUS)
 
 VEHICLE_STATES = {
@@ -343,11 +343,14 @@ class LineFollower():
 
 def animate_frame(frame_num, car, blender_car, blender_marble):
     bpy.context.scene.frame_set(frame_num)
-
+    print(f"\n***********FRAME_NUM: {frame_num}******************")
+    
+    # Calcule nouvelle position de la bille
+    blender_marble.location = car.get_marble_position(car._heading)
+    
     # On déplace le véhicule
     blender_car.location = car.update()
     blender_car.rotation_euler.z = car._heading
-    blender_marble.location = car.get_marble_position(car._heading)
 
     # On ajout un keyframe
     blender_car.keyframe_insert(data_path="location", frame=frame_num)
@@ -365,7 +368,7 @@ def init_car():
     blender_car.rotation_euler = start_angle
 
     car = Vehicle(start_pos, 0)
-    car.speed(50)
+    car.speed(80)
     # vehicule.turn(87)
     car.turn_straight()
     car.forward()
@@ -405,10 +408,8 @@ def main():
 
     animate_frame(frame_num=0, car=car, blender_car=blender_car, blender_marble=blender_marble)
 
-    for i in range(FRAME_NUM):
-        print(f"\n***********FRAME_NUM: {i}******************")
+    for i in range(1, FRAME_NUM):
         angle = line_follower.get_angle_to_turn()
-        print("LINE FOLLOWER :: ", np.degrees(angle)+90)
         car.turn(np.degrees(angle)+90)
         animate_frame(frame_num=i, car=car, blender_car=blender_car, blender_marble=blender_marble)
 
