@@ -399,8 +399,6 @@ def modif_speed(f, car):
         car.speed(70)
 
 
-
-
 def main():
     car, blender_car = init_car()
     blender_marble = init_marble()

@@ -13,7 +13,7 @@ LINE = "Plane"
 CAR = "Vehicle"
 MARBLE = "Marble"
 OBSTACLE= "Cube"
-FRAME_NUM = 2000
+FRAME_NUM = 3000
 FRAMERATE = 30 # Framerate
 TIME = 1 / FRAMERATE
 DISTANCE_WHEELS = 0.14 # 14cm d'empattement
@@ -21,9 +21,9 @@ DISTANCE_STOP=0.1 #200 mm
 TURN_ANGLE = 15
 FIND_LINE_ANGLE = 30
 
-ACCELERATIONFACTOR = 2.5
+ACCELERATIONFACTOR = 1.5
 DECELERATIONFACTOR = 2.5
-TURN_ACCELERATION_FACTOR = 25
+TURN_ACCELERATION_FACTOR = 5
 
 # Constantes pour bille
 ROTATION_RADIUS = 0.14
@@ -31,7 +31,7 @@ CONTAINER_HEIGHT = 0.0085 # 10mm - 1.5mm concavity
 MARBLE_MASS = 0.0052
 MARBLE_R = 0.005
 G = 9.810
-DAMP = 0.7
+DAMP = 0.5
 Z = np.sqrt(G / ROTATION_RADIUS)
 
 VEHICLE_STATES = {
@@ -66,7 +66,6 @@ class Marble:
         # self.z = MARBLE_R + CONTAINER_HEIGHT + ROTATION_RADIUS*(1 - cos(self.theta))
         
     def set_acceleration(self, accel, angle=0.0):
-        print("Setting Acceleration :: ", accel, "Angle :: ", angle)
         self.alpha = np.array([accel * np.cos(angle), accel * np.sin(angle)])
         self.rel_time = TIME
 
@@ -124,8 +123,17 @@ class Vehicle:
         self._heading = heading
         self._marble = Marble()
 
-    def get_marble_position(self):
-        return self._marble.get_cartesian_position()
+    def get_marble_position(self, heading):
+        
+        rotation_matrix = np.array([
+            [np.cos(heading), np.sin(heading), 0],
+            [-np.sin(heading), np.cos(heading), 0],
+            [0, 0, 1]
+        ])
+
+        coords = np.array(self._marble.get_cartesian_position())
+
+        return rotation_matrix @ coords
 
     # Retourne le pourcentage nécessaire pour obtenir une certaine vitesse en m/s
     # À utiliser pour le vrai véhicule
@@ -221,7 +229,7 @@ class Vehicle:
         # Calcul de l'accélération
         self.update_acceleration(self._speed - self._prev_speed)
         car_acceleration = self._acceleration
-        acceleration_angle = np.radians(self._heading)
+        acceleration_angle = self._heading
 
         # print("Accélération à: ", self._acceleration)
 
@@ -231,7 +239,7 @@ class Vehicle:
         # print("self._angleroues:", self._wheel_angle)
         
         # Virage
-        if circon > 0 and self._is_turning:
+        if self._is_turning:
             car_acceleration = TURN_ACCELERATION_FACTOR  * self._speed**2 / np.abs(self.angle_to_radius(self._wheel_angle))
             if self._state == 1:
                 distanceframe = self._speed * TIME
@@ -256,9 +264,6 @@ class Vehicle:
 
                 acceleration_angle = self._heading + np.pi/2
 
-            if self._heading >= np.pi/2 and self._heading <= 3*np.pi/2:
-                acceleration_angle *= -1
-
         # print("Cap:", self._heading)
 
         # Déplacement
@@ -273,7 +278,6 @@ class Vehicle:
         elif self._state == VEHICLE_STATES['STOP']:
             car_acceleration = -self._prev_speed / TIME
             acceleration_angle = self._heading
-            print("Stop: ", self._coordinates)
         else:
             print("Erreur, état invalide")
 
@@ -281,6 +285,9 @@ class Vehicle:
         self._prev_speed = self._speed
 
         # Simule le mouvement de la bille
+        if self._state == VEHICLE_STATES['BACKWARD']:
+            car_acceleration *= -1
+        
         self._marble.set_acceleration(car_acceleration, angle=acceleration_angle)
         self._marble.simulate()
         return self._coordinates
@@ -365,7 +372,6 @@ class LineFollower():
     def is_sensor_over_line(self, sensor):
         bpy.context.view_layer.update()
         origin = sensor.matrix_world.translation
-        print("Sensor position : " + str(origin))
 
         ray_direction = mathutils.Vector((0, 0, -1))
 
@@ -387,14 +393,12 @@ class LineFollower():
     def get_angle_to_turn(self):
         angle = 0
         read = self.lf_read_digital()
-        print(read)
 
         if read == [0, 0, 0, 0, 0]:
             angle = np.sign(self.last_angle)*45
         else:
             angle = (2 - np.mean(np.nonzero(read))) * 45/2
         self.last_angle = angle
-        print("Angle: ", angle)
         return math.radians(angle)
 
 
@@ -415,8 +419,8 @@ def should_stop(distance):
 
 
 def init_car():
-    start_pos = [-0.2, 0, 0.025]
-    start_angle = (0, 0, math.pi / 18)
+    start_pos = [-0, 0, 0.025]
+    start_angle = (0, 0, 0)
 
     blender_car = bpy.data.objects.get(CAR)
     blender_car.select_set(True)
@@ -425,7 +429,7 @@ def init_car():
     blender_car.rotation_euler = start_angle
 
     car = Vehicle(start_pos, 0)
-    car.speed(50)
+    car.speed(80)
     # vehicule.turn(87)
     car.turn_straight()
     car.forward()
@@ -439,13 +443,13 @@ def init_marble():
     return b_marble
         
 def animate_frame(frame_num, car, blender_car, blender_marble):
-    print("FRAME :: ", frame_num)
+    # print("FRAME :: ", frame_num)
     bpy.context.scene.frame_set(frame_num)
 
     # On déplace le véhicule
+    blender_marble.location = car.get_marble_position(car._heading)
     blender_car.location = car.update()
     blender_car.rotation_euler.z = car._heading
-    blender_marble.location = car.get_marble_position()
 
     # On ajout un keyframe
     blender_car.keyframe_insert(data_path="location", frame=frame_num)
@@ -474,13 +478,11 @@ def main():
 
     start_turn_frame = None
 
-    for i in range(FRAME_NUM):
+    for i in range(1, FRAME_NUM):
         print(f"***********FRAME_NUM: {i}******************")
-        print(f"***********get_around: {get_around}******************")
-        print(f"***********state: {state}******************")
-        #print(f"***********frame_in_turn: {frame_in_turn}******************")
         obstacle_distance, _ = distance_sensor.get_raw_distance()
         if(state == State.FOLLOW_LINE):
+            car.speed(80)
             if should_stop(distance=obstacle_distance):
                 state= State.OBSTACLE_WAITING
                 start_waiting_frame = i
@@ -494,7 +496,7 @@ def main():
         elif(state == State.OBSTACLE_BACKWARD):
             car.backward()
             car.turn_straight()
-            car.speed(10)
+            car.speed(50)
             if obstacle_distance is None or obstacle_distance >= 300:
                 state = State.OBSTACLE_TURN
                 start_turn_frame = i
