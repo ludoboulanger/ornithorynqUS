@@ -18,7 +18,8 @@ FRAMERATE = 30 # Framerate
 TIME = 1 / FRAMERATE
 DISTANCE_WHEELS = 0.14 # 14cm d'empattement
 DISTANCE_STOP=0.1 #200 mm
-TURN_ANGLE = 20
+TURN_ANGLE = 15
+FIND_LINE_ANGLE = 30
 
 ACCELERATIONFACTOR = 3.5
 DECELERATIONFACTOR = 3.5
@@ -389,9 +390,9 @@ class LineFollower():
         print(read)
 
         if read == [0, 0, 0, 0, 0]:
-            angle = self.last_angle
+            angle = np.sign(self.last_angle)*45
         else:
-            angle = (2 - np.mean(np.nonzero(read))) * 90/3
+            angle = (2 - np.mean(np.nonzero(read))) * 45/2
         self.last_angle = angle
         print("Angle: ", angle)
         return math.radians(angle)
@@ -498,14 +499,14 @@ def main():
                 state = State.OBSTACLE_TURN
                 start_turn_frame = i
         elif(state == State.OBSTACLE_TURN):
-                frame_in_turn = 0.3/(car._speed / FRAMERATE)*1.1          
+                frame_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(car._speed / FRAMERATE)        
                 car.forward()   
                 car.speed(50)   
                 car.turn(90+TURN_ANGLE) 
                 if i-start_turn_frame>=frame_in_turn:  
                     state = State.OBSTACLE_FIND_LINE    
         elif(state == State.OBSTACLE_FIND_LINE):
-                car.turn(90-TURN_ANGLE)
+                car.turn(90-FIND_LINE_ANGLE)
                 if line_follower.is_over_line():
                     state= State.FOLLOW_LINE
             
