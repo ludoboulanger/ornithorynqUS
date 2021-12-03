@@ -79,12 +79,12 @@ def race(v, timeout, log=False, calibrate=False):
         elif(current_state == States.OBSTACLE_BACKWARD):
             print(f"------------------Current state : {current_state}---------------")
             v.backward()
-            desired_angle = 90 + line_follower.get_angle_to_turn()
+            desired_angle = 90 - line_follower.get_angle_to_turn()
             current_angle = 90 - degrees(v._wheel_angle)
             diff = desired_angle - current_angle
-            # print(f"Diff {diff} desired_angle {desired_angle} current_angle {current_angle}")
-            # print(f"Turning with angle : {current_angle + diff * 0.5}")
-            v.turn(-(current_angle + diff * 0.5))
+            print(f"Diff {diff} desired_angle {desired_angle} current_angle {current_angle}")
+            print(f"Turning with angle : {current_angle + diff * 0.5}")
+            v.turn(current_angle + diff * 0.5)
             v.speed(BACKWARD_SPEED)
             if closest_obstacle_distance >= BACKWARD_DISTANCE:
                 current_state = States.OBSTACLE_TURN
