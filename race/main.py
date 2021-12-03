@@ -64,7 +64,7 @@ def race(v, timeout, log=False, calibrate=False):
                     v.speed(SLOW_SPEED)
                 if distance_sensor.should_avoid(closest_obstacle_distance):
                     current_state = States.OBSTACLE_WAITING
-            is_race_over = line_follower.is_race_over()
+            is_race_over = line_follower.is_race_over() and obstacle_count == 3
             # if log:
             # print(f'closest obstacle distance : {closest_obstacle_distance}')
             # print(f'Car racing, time elapsed : {time_elapsed}')
