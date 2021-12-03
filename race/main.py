@@ -52,9 +52,9 @@ def race(v, timeout, log=False, calibrate=False):
     while time_elapsed < timeout and not is_race_over:
         # count+=1
         time_elapsed = time.time() - start_time
+        closest_obstacle_distance = distance_sensor.get_corrected_distance()
         if(current_state == States.FOLLOW_LINE):
             print(f"------------------Current state : {current_state}---------------")
-            closest_obstacle_distance = distance_sensor.get_corrected_distance()
             if closest_obstacle_distance > 0:
                 if distance_sensor.should_slow_down(closest_obstacle_distance):
                     v.speed(SLOW_SPEED)
