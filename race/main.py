@@ -60,9 +60,6 @@ def race(v, timeout, log=False, calibrate=False):
                     v.speed(SLOW_SPEED)
                 if distance_sensor.should_avoid(closest_obstacle_distance):
                     current_state = States.OBSTACLE_WAITING
-                      # instead of stopping, we should avoid obstacle
-                    # call avoid function here or while loop
-                    break  # remove when avoid is implemented
             is_race_over = line_follower.is_race_over()
             # if log:
             # print(f'closest obstacle distance : {closest_obstacle_distance}')
@@ -111,10 +108,11 @@ if __name__ == '__main__':
         log_main = True
         race_timeout = 80  # seconds
         race_time = race(v, timeout=race_timeout, log=log_main, calibrate=calibrate)
-        GPIO.cleanup()
         if log_main:
             print(f'Race over, time elapsed : {race_time}, timeout exceeded? : {race_time > race_timeout}')
     except:
-        v.stop()
-        GPIO.cleanup()
+        pass
+
+    v.stop()
+    GPIO.cleanup()
         
