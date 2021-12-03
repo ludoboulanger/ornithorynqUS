@@ -80,14 +80,14 @@ def race(v, timeout, log=False, calibrate=False):
             print(f"------------------Current state : {current_state}---------------")
             v.backward()
             v.turn_straight()
-            v.speed(50)
+            v.speed(BACKWARD_SPEED)
             if closest_obstacle_distance >= BACKWARD_DISTANCE:
                 current_state = States.OBSTACLE_TURN
         elif(current_state == States.OBSTACLE_TURN):
             print(f"------------------Current state : {current_state}---------------")
             v.forward()
             v.speed(TURN_SPEED)
-            time_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(v.get_speedms())        
+            time_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(v.getspeedms())        
             print("TIME TURN :: ", time_in_turn)   
             v.turn(90+TURN_ANGLE)
             time.sleep(time_in_turn)
