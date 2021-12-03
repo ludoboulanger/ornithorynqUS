@@ -102,11 +102,12 @@ def race(v, timeout, log=False, calibrate=False):
             v.forward()
             v.speed(TURN_SPEED)
             time_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(v.getspeedms())        
-            print("TIME TURN :: ", time_in_turn)   
+            print("TIME TURN :: ", time_in_turn)
+            turn_correction = -line_follower.get_angle_to_turn() * 10 / 45 # max angle return is 45, we set it between 0 and 10
             if obstacle_count == 2:
-                v.turn(90-TURN_ANGLE_LEFT) # race is easier if we turn left
+                v.turn(90-(TURN_ANGLE_LEFT + turn_correction)) # race is easier if we turn left
             else:
-                v.turn(90+TURN_ANGLE_RIGHT)
+                v.turn(90+(TURN_ANGLE_RIGHT + turn_correction))
             time.sleep(time_in_turn)
             current_state = States.OBSTACLE_FIND_LINE
         elif(current_state == States.OBSTACLE_FIND_LINE):
