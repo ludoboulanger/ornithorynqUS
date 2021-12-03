@@ -82,7 +82,6 @@ def race(v, timeout, log=False, calibrate=False):
             obstacle_count += 1
             current_state = States.OBSTACLE_BACKWARD
             time_backward_start = time.time()
-            time_in_backward = (0.3-closest_obstacle_distance/1000)/(v.getspeedms()) 
         elif(current_state == States.OBSTACLE_BACKWARD):
             print(f"------------------Current state : {current_state}---------------")
             v.backward()
@@ -93,6 +92,7 @@ def race(v, timeout, log=False, calibrate=False):
             print(f"Turning with angle : {current_angle + diff * 0.5}")
             v.turn(current_angle + diff * 0.5)
             v.speed(BACKWARD_SPEED)
+            time_in_backward = (0.3-0.1)/(v.getspeedms()) 
             if time.time()-time_backward_start >= time_in_backward:
                 v.stop()
                 time.sleep(0.3)
