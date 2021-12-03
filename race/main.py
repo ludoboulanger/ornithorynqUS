@@ -25,7 +25,8 @@ DISTANCE_WHEELS = 0.14 # 14cm d'empattement
 FIND_LINE_ANGLE = 30
 SLOW_SPEED = 40
 TOTAL_OBSTACLES = 3
-TURN_ANGLE = 25
+TURN_ANGLE_RIGHT = 25
+TURN_ANGLE_LEFT = 35
 TURN_SPEED = 50
 WAIT_TIME = 5
 
@@ -89,10 +90,11 @@ def race(v, timeout, log=False, calibrate=False):
             print(f"Turning with angle : {current_angle + diff * 0.5}")
             v.turn(current_angle + diff * 0.5)
             v.speed(BACKWARD_SPEED)
-            if closest_obstacle_distance >= BACKWARD_DISTANCE:
-                v.stop()
-                time.sleep(0.3)
-                current_state = States.OBSTACLE_TURN
+            time_in_turn = (0.3-closest_obstacle_distance/1000)/(v.getspeedms()) 
+            time.sleep(time_in_turn)
+            v.stop()
+            time.sleep(0.3)
+            current_state = States.OBSTACLE_TURN
         elif(current_state == States.OBSTACLE_TURN):
             print(f"------------------Current state : {current_state}---------------")
             v.forward()
@@ -100,9 +102,9 @@ def race(v, timeout, log=False, calibrate=False):
             time_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(v.getspeedms())        
             print("TIME TURN :: ", time_in_turn)   
             if obstacle_count == 2:
-                v.turn(90-TURN_ANGLE) # race is easier if we turn left
+                v.turn(90-TURN_ANGLE_LEFT) # race is easier if we turn left
             else:
-                v.turn(90+TURN_ANGLE)
+                v.turn(90+TURN_ANGLE_RIGHT)
             time.sleep(time_in_turn)
             current_state = States.OBSTACLE_FIND_LINE
         elif(current_state == States.OBSTACLE_FIND_LINE):
