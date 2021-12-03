@@ -90,6 +90,8 @@ def race(v, timeout, log=False, calibrate=False):
             v.turn(current_angle + diff * 0.5)
             v.speed(BACKWARD_SPEED)
             if closest_obstacle_distance >= BACKWARD_DISTANCE:
+                v.stop()
+                time.sleep(0.3)
                 current_state = States.OBSTACLE_TURN
         elif(current_state == States.OBSTACLE_TURN):
             print(f"------------------Current state : {current_state}---------------")
@@ -106,7 +108,10 @@ def race(v, timeout, log=False, calibrate=False):
         elif(current_state == States.OBSTACLE_FIND_LINE):
             v.speed(CRUISE_SPEED)
             print(f"------------------Current state : {current_state}---------------")
-            v.turn(90-FIND_LINE_ANGLE)
+            if obstacle_count == 2:
+                v.turn(90+FIND_LINE_ANGLE)
+            else :
+                v.turn(90-FIND_LINE_ANGLE)
             if line_follower.is_over_line():
                 current_state= States.FOLLOW_LINE    
     v.stop()
