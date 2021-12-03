@@ -45,7 +45,7 @@ def race(v, timeout, log=False, calibrate=False):
     is_race_over = False  # we should somehow get the information when we find the finish line (T shape)
     current_state = States.FOLLOW_LINE
     obstacle_count = 0
-
+    time_backward_start = None
     if calibrate:
         line_follower.calibrate(v)
     input("Ready...set...")
@@ -54,7 +54,7 @@ def race(v, timeout, log=False, calibrate=False):
     count = 0
     while time_elapsed < timeout and not is_race_over:
         # count+=1
-        time_backward_start = None
+        
         time_elapsed = time.time() - start_time
         closest_obstacle_distance = distance_sensor.get_corrected_distance()
         if(current_state == States.FOLLOW_LINE):
