@@ -23,10 +23,11 @@ BACKWARD_SPEED = 50
 CRUISE_SPEED = 70
 DISTANCE_WHEELS = 0.14 # 14cm d'empattement
 FIND_LINE_ANGLE = 25
+MIN_SPEED = 30
 SLOW_SPEED = 40
 TOTAL_OBSTACLES = 3
 TURN_ANGLE_RIGHT = 20
-TURN_ANGLE_LEFT = 35
+TURN_ANGLE_LEFT = 38
 TURN_SPEED = 50
 WAIT_TIME = 5
 DECCEL_RATE = 1
@@ -78,7 +79,8 @@ def race(v, timeout, log=False, calibrate=False):
             
             if slowing_down:
                     print("SLOW DOWN BROOOOOOO")
-                    curr_speed -= DECCEL_RATE
+                    if curr_speed > MIN_SPEED:
+                        curr_speed -= DECCEL_RATE
                     print("CURR SPEED", curr_speed)
                     v.speed(int(curr_speed))
             
