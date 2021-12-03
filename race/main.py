@@ -85,9 +85,11 @@ def race(v, timeout, log=False, calibrate=False):
                 current_state = States.OBSTACLE_TURN
         elif(current_state == States.OBSTACLE_TURN):
             print(f"------------------Current state : {current_state}---------------")
-            time_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(v._speed)        
+            time_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(TURN_SPEED)        
             v.forward()
-            v.speed(TURN_SPEED)   
+            v.speed(TURN_SPEED)
+            print("ALLOOOOOOOOO")
+            print("TIME TURN :: ", time_in_turn)   
             v.turn(90+TURN_ANGLE)
             time.sleep(time_in_turn)
             current_state = States.OBSTACLE_FIND_LINE
