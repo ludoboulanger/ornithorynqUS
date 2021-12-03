@@ -61,9 +61,7 @@ def race(v, timeout, log=False, calibrate=False):
             print(f"------------------Current state : {current_state}---------------")
             if closest_obstacle_distance > 0:
                 if distance_sensor.should_slow_down(closest_obstacle_distance):
-                    v.speed(SLOW_SPEED)
-                if distance_sensor.should_avoid(closest_obstacle_distance):
-                    current_state = States.OBSTACLE_WAITING
+                    current_state = States.OBSTACLE_APPROACHING
             is_race_over = line_follower.is_race_over() and obstacle_count == 3
             # if log:
             # print(f'closest obstacle distance : {closest_obstacle_distance}')
@@ -75,7 +73,10 @@ def race(v, timeout, log=False, calibrate=False):
             # print(f"Turning with angle : {current_angle + diff * 0.5}")
             v.turn(current_angle + diff * 0.37)
             v.speed(CRUISE_SPEED-0.56*abs(diff)*0.37) ## Will slow down up to 20 less than CRUISE_SPEED
-
+        elif(current_state == States.OBSTACLE_APPROACHING):
+            v.speed(SLOW_SPEED)
+            if distance_sensor.should_avoid(closest_obstacle_distance):
+                current_state = States.OBSTACLE_WAITING
         elif(current_state == States.OBSTACLE_WAITING):
             print(f"------------------Current state : {current_state}---------------")
             v.stop()
