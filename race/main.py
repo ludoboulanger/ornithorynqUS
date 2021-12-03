@@ -87,7 +87,7 @@ def race(v, timeout, log=False, calibrate=False):
             print(f"------------------Current state : {current_state}---------------")
             v.forward()
             v.speed(TURN_SPEED)
-            time_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(v._speed)        
+            time_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(v.get_speedms())        
             print("TIME TURN :: ", time_in_turn)   
             v.turn(90+TURN_ANGLE)
             time.sleep(time_in_turn)
