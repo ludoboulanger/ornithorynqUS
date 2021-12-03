@@ -25,7 +25,7 @@ DISTANCE_WHEELS = 0.14 # 14cm d'empattement
 FIND_LINE_ANGLE = 25
 SLOW_SPEED = 40
 TOTAL_OBSTACLES = 3
-TURN_ANGLE_RIGHT = 25
+TURN_ANGLE_RIGHT = 20
 TURN_ANGLE_LEFT = 35
 TURN_SPEED = 50
 WAIT_TIME = 5
@@ -73,7 +73,7 @@ def race(v, timeout, log=False, calibrate=False):
             diff = desired_angle - current_angle
             # print(f"Diff {diff} desired_angle {desired_angle} current_angle {current_angle}")
             # print(f"Turning with angle : {current_angle + diff * 0.5}")
-            v.turn(current_angle + diff * 0.5)
+            v.turn(current_angle + diff * 0.45)
 
         elif(current_state == States.OBSTACLE_WAITING):
             print(f"------------------Current state : {current_state}---------------")
