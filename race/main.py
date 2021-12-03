@@ -6,6 +6,7 @@ from math import degrees
 import math
 from enum import Enum
 import asyncio
+import RPi.GPIO as GPIO
 
 
 class States(Enum):
@@ -19,79 +20,120 @@ class States(Enum):
 AVOID_DISTANCE = 100
 BACKWARD_DISTANCE = 300
 BACKWARD_SPEED = 50
-CRUISE_SPEED = 80
+CRUISE_SPEED = 70
 DISTANCE_WHEELS = 0.14 # 14cm d'empattement
-FIND_LINE_ANGLE = 30
+FIND_LINE_ANGLE = 25
+MIN_SPEED = 30
 SLOW_SPEED = 40
-TURN_ANGLE = 15
+TOTAL_OBSTACLES = 3
+TURN_ANGLE_RIGHT = 20
+TURN_ANGLE_LEFT = 45
 TURN_SPEED = 50
 WAIT_TIME = 5
+DECCEL_RATE = 1
 
 
 
-def race(timeout, log=False, calibrate=False):
+def race(v, timeout, log=False, calibrate=False):
     # Initialize car and sensors
-    v = vehicle.Vehicle()
     v.forward()
     v.turn_straight()
     v.stop()
     line_follower = LineFollower()
-    distance_sensor = DistanceSensor(channel=5, avoid_distance=AVOID_DISTANCE, log=log)
+    distance_sensor = DistanceSensor(channel=16, avoid_distance=AVOID_DISTANCE, log=log)
 
     # Init variables
     time_elapsed = 0
     is_race_over = False  # we should somehow get the information when we find the finish line (T shape)
     current_state = States.FOLLOW_LINE
+    obstacle_count = 0
+    time_backward_start = None
+    slowing_down = False
+    curr_speed = CRUISE_SPEED
 
     if calibrate:
         line_follower.calibrate(v)
     input("Ready...set...")
-    v.speed(CRUISE_SPEED)
+    v.speed(curr_speed)
     start_time = time.time()
     count = 0
     while time_elapsed < timeout and not is_race_over:
         # count+=1
+        
         time_elapsed = time.time() - start_time
+        closest_obstacle_distance = distance_sensor.get_corrected_distance()
         if(current_state == States.FOLLOW_LINE):
-            closest_obstacle_distance = distance_sensor.get_corrected_distance()
-            if closest_obstacle_distance > 0:
-                if distance_sensor.should_slow_down(closest_obstacle_distance):
-                    v.speed(SLOW_SPEED)
-                if distance_sensor.should_avoid(closest_obstacle_distance):
-                    current_state = States.OBSTACLE_WAITING
-                      # instead of stopping, we should avoid obstacle
-                    # call avoid function here or while loop
-                    break  # remove when avoid is implemented
-            is_race_over = line_follower.is_race_over()
-            # if log:
-            # print(f'closest obstacle distance : {closest_obstacle_distance}')
-            # print(f'Car racing, time elapsed : {time_elapsed}')
+            print(f"------------------Current state : {current_state}---------------")
+
             desired_angle = 90 + line_follower.get_angle_to_turn()
             current_angle = 90 - degrees(v._wheel_angle)
             diff = desired_angle - current_angle
             # print(f"Diff {diff} desired_angle {desired_angle} current_angle {current_angle}")
             # print(f"Turning with angle : {current_angle + diff * 0.5}")
-            v.turn(current_angle + diff * 0.5)
+            v.turn(current_angle + diff * 0.37)
+
+            if closest_obstacle_distance > 0:
+                slowing_down = distance_sensor.should_slow_down(closest_obstacle_distance)
+                if distance_sensor.should_avoid(closest_obstacle_distance):
+                    current_state = States.OBSTACLE_WAITING
+            
+            if slowing_down:
+                    print("SLOW DOWN BROOOOOOO")
+                    if curr_speed > MIN_SPEED:
+                        curr_speed -= DECCEL_RATE
+                    print("CURR SPEED", curr_speed)
+                    v.speed(int(curr_speed))
+            
+            is_race_over = line_follower.is_race_over() and obstacle_count == 3
+            # if log:
+            # print(f'closest obstacle distance : {closest_obstacle_distance}')
+            # print(f'Car racing, time elapsed : {time_elapsed}')
+            if not slowing_down:
+                v.speed(CRUISE_SPEED-0.56*abs(diff)*0.37) ## Will slow down up to 20 less than CRUISE_SPEED
 
         elif(current_state == States.OBSTACLE_WAITING):
+            print(f"------------------Current state : {current_state}---------------")
             v.stop()
             time.sleep(WAIT_TIME)
+            obstacle_count += 1
             current_state = States.OBSTACLE_BACKWARD
+            time_backward_start = time.time()
         elif(current_state == States.OBSTACLE_BACKWARD):
+            print(f"------------------Current state : {current_state}---------------")
             v.backward()
-            v.turn_straight()
-            v.speed(50)
-            if closest_obstacle_distance >= BACKWARD_DISTANCE:
+            desired_angle = 90 - line_follower.get_angle_to_turn()
+            current_angle = 90 - degrees(v._wheel_angle)
+            diff = desired_angle - current_angle
+            print(f"Diff {diff} desired_angle {desired_angle} current_angle {current_angle}")
+            print(f"Turning with angle : {current_angle + diff * 0.5}")
+            v.turn(current_angle + diff * 0.5)
+            v.speed(BACKWARD_SPEED)
+            time_in_backward = (0.3-0.1)/(v.getspeedms()) 
+            if time.time()-time_backward_start >= time_in_backward:
+                v.stop()
+                time.sleep(0.3)
                 current_state = States.OBSTACLE_TURN
         elif(current_state == States.OBSTACLE_TURN):
-            time_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(v._speed)        
+            print(f"------------------Current state : {current_state}---------------")
             v.forward()
-            v.speed(TURN_SPEED)   
-            v.turn(90+TURN_ANGLE)
+            v.speed(TURN_SPEED)
+            time_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(v.getspeedms())        
+            print("TIME TURN :: ", time_in_turn)
+            turn_correction = -line_follower.get_angle_to_turn() * 10 / 45 # max angle return is 45, we set it between 0 and 10
+            if obstacle_count == 2:
+                v.turn(90-(TURN_ANGLE_LEFT + turn_correction)) # race is easier if we turn left
+            else:
+                v.turn(90+(TURN_ANGLE_RIGHT + turn_correction))
             time.sleep(time_in_turn)
             current_state = States.OBSTACLE_FIND_LINE
         elif(current_state == States.OBSTACLE_FIND_LINE):
-            v.turn(90-FIND_LINE_ANGLE)
+            curr_speed = CRUISE_SPEED
+            v.speed(curr_speed)
+            print(f"------------------Current state : {current_state}---------------")
+            if obstacle_count == 2:
+                v.turn(90+FIND_LINE_ANGLE)
+            else :
+                v.turn(90-FIND_LINE_ANGLE)
             if line_follower.is_over_line():
                 current_state= States.FOLLOW_LINE    
     v.stop()
@@ -100,9 +142,18 @@ def race(timeout, log=False, calibrate=False):
 
 
 if __name__ == '__main__':
-    calibrate = False
-    log_main = True
-    race_timeout = 80  # seconds
-    race_time = race(timeout=race_timeout, log=log_main, calibrate=calibrate)
-    if log_main:
-        print(f'Race over, time elapsed : {race_time}, timeout exceeded? : {race_time > race_timeout}')
+    v = vehicle.Vehicle()
+    try: 
+        calibrate = False
+        log_main = True
+        race_timeout = 100  # seconds
+        race_time = race(v, timeout=race_timeout, log=log_main, calibrate=calibrate)
+        if log_main:
+            print(f'Race over, time elapsed : {race_time}, timeout exceeded? : {race_time > race_timeout}')
+    except Exception as e:
+        print(e)
+        pass
+
+    v.stop()
+    GPIO.cleanup()
+        
