@@ -29,6 +29,7 @@ TURN_ANGLE_RIGHT = 20
 TURN_ANGLE_LEFT = 35
 TURN_SPEED = 50
 WAIT_TIME = 5
+DECCEL_RATE = 0.001
 
 
 
@@ -47,11 +48,12 @@ def race(v, timeout, log=False, calibrate=False):
     obstacle_count = 0
     time_backward_start = None
     slowing_down = False
+    curr_speed = CRUISE_SPEED
 
     if calibrate:
         line_follower.calibrate(v)
     input("Ready...set...")
-    v.speed(CRUISE_SPEED)
+    v.speed(curr_speed)
     start_time = time.time()
     count = 0
     while time_elapsed < timeout and not is_race_over:
@@ -72,7 +74,8 @@ def race(v, timeout, log=False, calibrate=False):
             if closest_obstacle_distance > 0:
                 slowing_down = distance_sensor.should_slow_down(closest_obstacle_distance)
                 if slowing_down:
-                    v.speed(SLOW_SPEED)
+                    curr_speed = v._speedprct - DECCEL_RATE
+                    v.speed(curr_speed)
                 if distance_sensor.should_avoid(closest_obstacle_distance):
                     current_state = States.OBSTACLE_WAITING
             is_race_over = line_follower.is_race_over() and obstacle_count == 3
@@ -118,7 +121,8 @@ def race(v, timeout, log=False, calibrate=False):
             time.sleep(time_in_turn)
             current_state = States.OBSTACLE_FIND_LINE
         elif(current_state == States.OBSTACLE_FIND_LINE):
-            v.speed(CRUISE_SPEED)
+            curr_speed = CRUISE_SPEED
+            v.speed(curr_speed)
             print(f"------------------Current state : {current_state}---------------")
             if obstacle_count == 2:
                 v.turn(90+FIND_LINE_ANGLE)
