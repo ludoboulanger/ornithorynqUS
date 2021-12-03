@@ -74,7 +74,9 @@ def race(v, timeout, log=False, calibrate=False):
             if closest_obstacle_distance > 0:
                 slowing_down = distance_sensor.should_slow_down(closest_obstacle_distance)
                 if slowing_down:
+                    print("SLOW DOWN BROOOOOOO")
                     curr_speed -= DECCEL_RATE
+                    print("CURR SPEED", curr_speed)
                     v.speed(int(curr_speed))
                 if distance_sensor.should_avoid(closest_obstacle_distance):
                     current_state = States.OBSTACLE_WAITING
