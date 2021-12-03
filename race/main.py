@@ -46,6 +46,8 @@ def race(v, timeout, log=False, calibrate=False):
     current_state = States.FOLLOW_LINE
     obstacle_count = 0
     time_backward_start = None
+    slowing_down = False
+
     if calibrate:
         line_follower.calibrate(v)
     input("Ready...set...")
@@ -59,24 +61,27 @@ def race(v, timeout, log=False, calibrate=False):
         closest_obstacle_distance = distance_sensor.get_corrected_distance()
         if(current_state == States.FOLLOW_LINE):
             print(f"------------------Current state : {current_state}---------------")
-            if closest_obstacle_distance > 0:
-                if distance_sensor.should_slow_down(closest_obstacle_distance):
-                    current_state = States.OBSTACLE_APPROACHING
-            is_race_over = line_follower.is_race_over() and obstacle_count == 3
-            # if log:
-            # print(f'closest obstacle distance : {closest_obstacle_distance}')
-            # print(f'Car racing, time elapsed : {time_elapsed}')
+
             desired_angle = 90 + line_follower.get_angle_to_turn()
             current_angle = 90 - degrees(v._wheel_angle)
             diff = desired_angle - current_angle
             # print(f"Diff {diff} desired_angle {desired_angle} current_angle {current_angle}")
             # print(f"Turning with angle : {current_angle + diff * 0.5}")
             v.turn(current_angle + diff * 0.37)
-            v.speed(CRUISE_SPEED-0.56*abs(diff)*0.37) ## Will slow down up to 20 less than CRUISE_SPEED
-        elif(current_state == States.OBSTACLE_APPROACHING):
-            v.speed(SLOW_SPEED)
-            if distance_sensor.should_avoid(closest_obstacle_distance):
-                current_state = States.OBSTACLE_WAITING
+
+            if closest_obstacle_distance > 0:
+                slowing_down = distance_sensor.should_slow_down(closest_obstacle_distance)
+                if slowing_down:
+                    v.speed(SLOW_SPEED)
+                if distance_sensor.should_avoid(closest_obstacle_distance):
+                    current_state = States.OBSTACLE_WAITING
+            is_race_over = line_follower.is_race_over() and obstacle_count == 3
+            # if log:
+            # print(f'closest obstacle distance : {closest_obstacle_distance}')
+            # print(f'Car racing, time elapsed : {time_elapsed}')
+            if not slowing_down:
+                v.speed(CRUISE_SPEED-0.56*abs(diff)*0.37) ## Will slow down up to 20 less than CRUISE_SPEED
+
         elif(current_state == States.OBSTACLE_WAITING):
             print(f"------------------Current state : {current_state}---------------")
             v.stop()
