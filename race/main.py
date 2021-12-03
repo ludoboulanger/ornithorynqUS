@@ -24,7 +24,7 @@ CRUISE_SPEED = 80
 DISTANCE_WHEELS = 0.14 # 14cm d'empattement
 FIND_LINE_ANGLE = 30
 SLOW_SPEED = 40
-TURN_ANGLE = 15
+TURN_ANGLE = 25
 TURN_SPEED = 50
 WAIT_TIME = 5
 
@@ -93,6 +93,7 @@ def race(v, timeout, log=False, calibrate=False):
             time.sleep(time_in_turn)
             current_state = States.OBSTACLE_FIND_LINE
         elif(current_state == States.OBSTACLE_FIND_LINE):
+            v.speed(CRUISE_SPEED)
             print(f"------------------Current state : {current_state}---------------")
             v.turn(90-FIND_LINE_ANGLE)
             if line_follower.is_over_line():
