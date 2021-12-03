@@ -24,6 +24,7 @@ CRUISE_SPEED = 80
 DISTANCE_WHEELS = 0.14 # 14cm d'empattement
 FIND_LINE_ANGLE = 30
 SLOW_SPEED = 40
+TOTAL_OBSTACLES = 3
 TURN_ANGLE = 25
 TURN_SPEED = 50
 WAIT_TIME = 5
@@ -42,6 +43,7 @@ def race(v, timeout, log=False, calibrate=False):
     time_elapsed = 0
     is_race_over = False  # we should somehow get the information when we find the finish line (T shape)
     current_state = States.FOLLOW_LINE
+    obstacle_count = 0
 
     if calibrate:
         line_follower.calibrate(v)
@@ -75,6 +77,7 @@ def race(v, timeout, log=False, calibrate=False):
             print(f"------------------Current state : {current_state}---------------")
             v.stop()
             time.sleep(WAIT_TIME)
+            obstacle_count += 1
             current_state = States.OBSTACLE_BACKWARD
         elif(current_state == States.OBSTACLE_BACKWARD):
             print(f"------------------Current state : {current_state}---------------")
@@ -94,7 +97,10 @@ def race(v, timeout, log=False, calibrate=False):
             v.speed(TURN_SPEED)
             time_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(v.getspeedms())        
             print("TIME TURN :: ", time_in_turn)   
-            v.turn(90+TURN_ANGLE)
+            if obstacle_count == 2:
+                v.turn(90-TURN_ANGLE) # race is easier if we turn left
+            else:
+                v.turn(90+TURN_ANGLE)
             time.sleep(time_in_turn)
             current_state = States.OBSTACLE_FIND_LINE
         elif(current_state == States.OBSTACLE_FIND_LINE):
