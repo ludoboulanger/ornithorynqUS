@@ -400,6 +400,13 @@ class LineFollower():
             angle = (2 - np.mean(np.nonzero(read))) * 45/2
         self.last_angle = angle
         return math.radians(angle)
+    
+    def stop(self):
+        read = self.lf_read_digital()
+        if np.count_nonzero(read) >=3:
+            return True
+        
+        return False
 
 
 def print_obstacle_distance(distance, name):
@@ -511,6 +518,9 @@ def main():
                 car.turn(90-FIND_LINE_ANGLE)
                 if line_follower.is_over_line():
                     state= State.FOLLOW_LINE
+                    
+        if i >= 2050:
+            car.stop()
             
         animate_frame(frame_num=i, car=car, blender_car=blender_car, blender_marble=blender_marble)
 
