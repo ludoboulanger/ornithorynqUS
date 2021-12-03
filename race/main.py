@@ -73,7 +73,7 @@ def race(v, timeout, log=False, calibrate=False):
             diff = desired_angle - current_angle
             # print(f"Diff {diff} desired_angle {desired_angle} current_angle {current_angle}")
             # print(f"Turning with angle : {current_angle + diff * 0.5}")
-            v.turn(current_angle + diff * 0.45)
+            v.turn(current_angle + diff * 0.4)
 
         elif(current_state == States.OBSTACLE_WAITING):
             print(f"------------------Current state : {current_state}---------------")
