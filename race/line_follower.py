@@ -37,11 +37,7 @@ class LineFollower():
                 angle = self.last_angle
         else:
             self.count_zeros = 0
-            mean = np.mean(np.nonzero(read))
-            if mean >=2 :
-                angle = (2.5 - mean) / 1.5 * -45
-            else :
-                angle = (1.5 - mean) / 1.5 * -45
+            angle = (2 - np.mean(np.nonzero(read))) * -45 / 2
 
         self.last_angle = angle
 
