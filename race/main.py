@@ -111,8 +111,8 @@ if __name__ == '__main__':
         race_time = race(v, timeout=race_timeout, log=log_main, calibrate=calibrate)
         if log_main:
             print(f'Race over, time elapsed : {race_time}, timeout exceeded? : {race_time > race_timeout}')
-    except Exception:
-        print(Exception)
+    except Exception as e:
+        print(e)
         pass
 
     v.stop()
