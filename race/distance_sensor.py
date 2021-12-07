@@ -20,7 +20,7 @@ class DistanceSensor(object):
     timeout = 0.05
 
     # avoid distance and slow down distance should go in flash mcqueen class
-    def __init__(self, channel, avoid_distance=100, slow_down_diff=200, log=False):
+    def __init__(self, channel, avoid_distance=100, slow_down_diff=230, log=False):
         self.channel = channel
         self.log = log
         self.avoid_distance = avoid_distance

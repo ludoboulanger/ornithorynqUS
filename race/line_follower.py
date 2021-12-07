@@ -23,7 +23,7 @@ class LineFollower():
             return False
 
     def is_race_over(self):
-        return np.count_nonzero(self.lf_read_digital()) >= 4
+        return np.count_nonzero(self.lf_read_digital()) >= 3
 
     def get_angle_to_turn(self):
         read = self.lf_read_digital()

@@ -26,8 +26,8 @@ FIND_LINE_ANGLE = 25
 MIN_SPEED = 30
 SLOW_SPEED = 40
 TOTAL_OBSTACLES = 3
-TURN_ANGLE_RIGHT = 20
-TURN_ANGLE_LEFT = 45
+TURN_ANGLE_RIGHT = 27
+TURN_ANGLE_LEFT = 48
 TURN_SPEED = 50
 WAIT_TIME = 5
 DECCEL_RATE = 1
@@ -101,12 +101,12 @@ def race(v, timeout, log=False, calibrate=False):
         elif(current_state == States.OBSTACLE_BACKWARD):
             print(f"------------------Current state : {current_state}---------------")
             v.backward()
+            v.turn(90)
             desired_angle = 90 - line_follower.get_angle_to_turn()
             current_angle = 90 - degrees(v._wheel_angle)
             diff = desired_angle - current_angle
             print(f"Diff {diff} desired_angle {desired_angle} current_angle {current_angle}")
             print(f"Turning with angle : {current_angle + diff * 0.5}")
-            v.turn(current_angle + diff * 0.5)
             v.speed(BACKWARD_SPEED)
             time_in_backward = (0.3-0.1)/(v.getspeedms()) 
             if time.time()-time_backward_start >= time_in_backward:
@@ -119,7 +119,7 @@ def race(v, timeout, log=False, calibrate=False):
             v.speed(TURN_SPEED)
             time_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(v.getspeedms())        
             print("TIME TURN :: ", time_in_turn)
-            turn_correction = -line_follower.get_angle_to_turn() * 10 / 45 # max angle return is 45, we set it between 0 and 10
+            turn_correction = -line_follower.get_angle_to_turn() * 5 / 45 # max angle return is 45, we set it between 0 and 5
             if obstacle_count == 2:
                 v.turn(90-(TURN_ANGLE_LEFT + turn_correction)) # race is easier if we turn left
             else:
