@@ -100,7 +100,7 @@ class DistanceSensor(object):
 
     # This method should be refactored to be in Flash mcQueen class
     def should_avoid(self, distance):
-        should_avoid = distance <= (self.avoid_distance + 42)
+        should_avoid = distance <= (self.avoid_distance + 40)
         if self.log:
             print(f"should avoid ? : {should_avoid}")
         return should_avoid
