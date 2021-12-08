@@ -477,6 +477,7 @@ class State(Enum):
     OBSTACLE_TURN = 4
     OBSTACLE_FIND_LINE = 5
     FOLLOW_LINE = 6
+    OBSTACLE_WAIT_BEFORE_FORWARD = 7
 
 
 def main():
@@ -526,12 +527,17 @@ def main():
             car.turn_straight()
             car.speed(DODGE_SPEED)
             if obstacle_distance is None or obstacle_distance >= 300:
+                state = State.OBSTACLE_WAIT_BEFORE_FORWARD
+                start_waiting_frame = i
+        elif(state == State.OBSTACLE_WAIT_BEFORE_FORWARD):
+            car.stop()
+            if i - start_waiting_frame > FRAMERATE*0.3:
                 state = State.OBSTACLE_TURN
                 start_turn_frame = i
-        elif(state == State.OBSTACLE_TURN):
-                frame_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(car._speed / FRAMERATE)        
+        elif(state == State.OBSTACLE_TURN):        
                 car.forward()   
-                car.speed(DODGE_SPEED)   
+                car.speed(DODGE_SPEED) 
+                frame_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(car._speed / FRAMERATE)
                 car.turn(90+TURN_ANGLE) 
                 if i-start_turn_frame>=frame_in_turn:  
                     state = State.OBSTACLE_FIND_LINE    
@@ -542,7 +548,7 @@ def main():
                     car.speed(CRUISE_SPEED)
                     current_speed = CRUISE_SPEED
                     
-        if i >= 2450:
+        if i >= 2477:
             car.stop()
             
         animate_frame(frame_num=i, car=car, blender_car=blender_car, blender_marble=blender_marble)
