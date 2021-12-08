@@ -107,7 +107,7 @@ def race(v, timeout, log=False, calibrate=False):
             print(f"Diff {diff} desired_angle {desired_angle} current_angle {current_angle}")
             print(f"Turning with angle : {current_angle + diff * 0.5}")
             v.speed(BACKWARD_SPEED)
-            time_in_backward = (0.3-0.1)/(v.getspeedms()) 
+            time_in_backward = (0.32-0.1)/(v.getspeedms())
             if time.time()-time_backward_start >= time_in_backward:
                 v.stop()
                 time.sleep(0.3)
