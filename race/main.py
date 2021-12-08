@@ -78,7 +78,6 @@ def race(v, timeout, log=False, calibrate=False):
                     current_state = States.OBSTACLE_WAITING
             
             if slowing_down:
-                    print("SLOW DOWN BROOOOOOO")
                     if curr_speed > MIN_SPEED:
                         curr_speed -= DECCEL_RATE
                     print("CURR SPEED", curr_speed)

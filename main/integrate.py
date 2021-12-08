@@ -22,8 +22,8 @@ TURN_ANGLE = 15
 FIND_LINE_ANGLE = 30
 
 ACCELERATIONFACTOR = 1.5
-DECELERATIONFACTOR = 2.5
-TURN_ACCELERATION_FACTOR = 5
+DECELERATIONFACTOR = 1
+TURN_ACCELERATION_FACTOR = 10
 
 # Constantes pour bille
 ROTATION_RADIUS = 0.14
@@ -33,6 +33,12 @@ MARBLE_R = 0.005
 G = 9.810
 DAMP = 0.5
 Z = np.sqrt(G / ROTATION_RADIUS)
+
+# Constantes Simule Course
+CRUISE_SPEED = 70
+DODGE_SPEED = 50
+SLOW_DOWN_DIST = 330 # 100 de stop + 230 de slow
+DECCEL_RATE = 1
 
 VEHICLE_STATES = {
     'STOP' : 0,
@@ -159,26 +165,27 @@ class Vehicle:
     # Retourne l'accélération en fonction du changement de vitesse
     def update_acceleration(self, diff_speed):
        # Sécurité pour la méthode
-       if diff_speed > 0.27:
-           self._acceleration = 0
-           return 0
-       elif diff_speed < -0.27:
-           self._acceleration = 0
-           return 0
+        if diff_speed > 0.27:
+            self._acceleration = 0
+            return 0
+        elif diff_speed < -0.27:
+            self._acceleration = 0
+            return 0
 
-       if diff_speed > 0: # Accélération
-           self._acceleration = ACCELERATIONFACTOR * (-794.171873034486*np.power(diff_speed, 3)\
+        if diff_speed > 0: # Accélération
+            self._acceleration = ACCELERATIONFACTOR * (-794.171873034486*np.power(diff_speed, 3)\
                 + 281.9660606932039*np.power(diff_speed, 2)\
                 - 0.414200251036732*diff_speed\
                 - 0.6495715769694956)
-       elif diff_speed < 0: # Décélération, on assume l'inverse de l'accélération
-           diff_speed = np.abs(diff_speed)
-           self._acceleration = -1 * DECELERATIONFACTOR *(-794.171873034486*np.power(diff_speed, 3)\
+        elif diff_speed < 0: # Décélération, on assume l'inverse de l'accélération
+            diff_speed = np.abs(diff_speed)
+            self._acceleration = -1 * DECELERATIONFACTOR *(-794.171873034486*np.power(diff_speed, 3)\
                 + 281.9660606932039*np.power(diff_speed, 2)
                 - 0.414200251036732*diff_speed\
                 - 0.6495715769694956)
-       else:
-           self._acceleration = 0
+            self._acceleration *= -1
+        else:
+            self._acceleration = 0
 
     # Ajuste la vitesse du robot, équivalent à la librairie du robot
     def speed(self, percent):
@@ -436,7 +443,7 @@ def init_car():
     blender_car.rotation_euler = start_angle
 
     car = Vehicle(start_pos, 0)
-    car.speed(80)
+    car.speed(CRUISE_SPEED)
     # vehicule.turn(87)
     car.turn_straight()
     car.forward()
@@ -485,11 +492,25 @@ def main():
 
     start_turn_frame = None
 
+    current_speed = CRUISE_SPEED
+
     for i in range(1, FRAME_NUM):
         print(f"***********FRAME_NUM: {i}******************")
         obstacle_distance, _ = distance_sensor.get_raw_distance()
+        slowing_down = obstacle_distance is not None and obstacle_distance <= SLOW_DOWN_DIST
         if(state == State.FOLLOW_LINE):
-            car.speed(80)
+            
+            if slowing_down:
+                if current_speed >= DODGE_SPEED:
+                    current_speed -= DECCEL_RATE
+            else:
+                desired_angle = 90 + line_follower.get_angle_to_turn()
+                current_angle = 90 - degrees(car._wheel_angle)
+                diff = desired_angle - current_angle
+                current_speed = CRUISE_SPEED-0.56*abs(diff)*1
+            
+            car.speed(int(current_speed))
+
             if should_stop(distance=obstacle_distance):
                 state= State.OBSTACLE_WAITING
                 start_waiting_frame = i
@@ -503,14 +524,14 @@ def main():
         elif(state == State.OBSTACLE_BACKWARD):
             car.backward()
             car.turn_straight()
-            car.speed(50)
+            car.speed(DODGE_SPEED)
             if obstacle_distance is None or obstacle_distance >= 300:
                 state = State.OBSTACLE_TURN
                 start_turn_frame = i
         elif(state == State.OBSTACLE_TURN):
                 frame_in_turn = math.sqrt(0.3**2+(DISTANCE_WHEELS/2)**2)/(car._speed / FRAMERATE)        
                 car.forward()   
-                car.speed(50)   
+                car.speed(DODGE_SPEED)   
                 car.turn(90+TURN_ANGLE) 
                 if i-start_turn_frame>=frame_in_turn:  
                     state = State.OBSTACLE_FIND_LINE    
@@ -518,8 +539,10 @@ def main():
                 car.turn(90-FIND_LINE_ANGLE)
                 if line_follower.is_over_line():
                     state= State.FOLLOW_LINE
+                    car.speed(CRUISE_SPEED)
+                    current_speed = CRUISE_SPEED
                     
-        if i >= 2050:
+        if i >= 2450:
             car.stop()
             
         animate_frame(frame_num=i, car=car, blender_car=blender_car, blender_marble=blender_marble)
